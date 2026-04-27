@@ -8,6 +8,7 @@ const draftListSection = document.querySelector("#draftListSection");
 const editorView = document.querySelector("#editorView");
 const preview = document.querySelector("#cvPreview");
 const statusEl = document.querySelector("#status");
+const toast = document.querySelector("#toast");
 const keywordsEl = document.querySelector("#keywords");
 const profileGrid = document.querySelector("#profileGrid");
 const profileCount = document.querySelector("#profileCount");
@@ -310,6 +311,15 @@ function saveDraft(message = "Brouillon sauvegardé") {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
   scheduleDatabaseSave(draft);
   statusEl.textContent = message;
+}
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add("is-visible");
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => {
+    toast.classList.remove("is-visible");
+  }, 2200);
 }
 
 function scheduleDatabaseSave(draft) {
@@ -866,6 +876,8 @@ document.querySelector("#backHome").addEventListener("click", showHome);
 document.querySelector("#saveDraft").addEventListener("click", async () => {
   saveDraft("Profil sauvegardé");
   await saveCurrentProfile();
+  if (currentCvDraftId) await saveCurrentCvDraft();
+  showToast("Enregistré avec succès");
 });
 document.querySelector("#resetDraft").addEventListener("click", resetDraft);
 document.querySelector("#printCv").addEventListener("click", () => window.print());

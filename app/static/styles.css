@@ -324,6 +324,30 @@ button:hover {
   background: #fff;
 }
 
+.toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 20;
+  max-width: 320px;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  color: var(--accent-dark);
+  font-weight: 800;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 #cvForm {
   padding-bottom: 0;
 }
