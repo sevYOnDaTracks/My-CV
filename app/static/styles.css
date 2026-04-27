@@ -709,14 +709,17 @@ textarea:focus {
 
 .item-head {
   display: flex;
+  justify-content: space-between;
   align-items: baseline;
+  gap: 16px;
 }
 
 .item-meta {
   color: var(--cv-muted);
-  margin-top: 2px !important;
+  flex: 0 1 45%;
   font-size: 13px;
   font-weight: 600;
+  text-align: right;
 }
 
 .cv-page ul {
@@ -820,6 +823,11 @@ textarea:focus {
   .actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .item-meta {
+    flex-basis: auto;
+    text-align: left;
   }
 }
 
