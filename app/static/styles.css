@@ -432,38 +432,28 @@ textarea:focus {
   line-height: 1;
 }
 
-.drag-handle {
+.item-order {
+  display: flex;
+  gap: 4px;
+}
+
+.item-order span {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--muted);
-  cursor: grab;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 900;
-  letter-spacing: -3px;
   user-select: none;
 }
 
-.drag-handle:hover {
+.item-order span:hover {
   border-color: var(--accent);
   color: var(--accent-dark);
   background: rgba(15, 118, 110, 0.07);
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
-.item-editor.is-dragging {
-  opacity: 0.45;
-}
-
-.item-editor.is-drop-target {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.16);
 }
 
 .item-body {

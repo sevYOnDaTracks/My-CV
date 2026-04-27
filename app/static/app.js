@@ -201,10 +201,18 @@ function addItem(groupName, data = {}) {
   });
   refreshItemHeader(node, groupName);
 
-  setupDragAndDrop(node);
-
   node.querySelector("[data-toggle-item]").addEventListener("click", () => {
     node.classList.toggle("is-collapsed");
+  });
+
+  node.querySelector("[data-move-up]").addEventListener("click", (event) => {
+    event.stopPropagation();
+    moveItem(node, "up");
+  });
+
+  node.querySelector("[data-move-down]").addEventListener("click", (event) => {
+    event.stopPropagation();
+    moveItem(node, "down");
   });
 
   node.querySelectorAll("[data-field]").forEach((field) => {
@@ -221,54 +229,18 @@ function addItem(groupName, data = {}) {
   if (Object.keys(data).length) node.classList.add("is-collapsed");
 }
 
-function setupDragAndDrop(node) {
-  const handle = node.querySelector("[data-drag-handle]");
-  node.draggable = true;
+function moveItem(node, direction) {
+  const sibling = direction === "up" ? node.previousElementSibling : node.nextElementSibling;
+  if (!sibling) return;
 
-  handle.addEventListener("click", (event) => {
-    event.stopPropagation();
-  });
+  if (direction === "up") {
+    node.parentElement.insertBefore(node, sibling);
+  } else {
+    node.parentElement.insertBefore(sibling, node);
+  }
 
-  node.addEventListener("dragstart", (event) => {
-    if (!event.target.closest("[data-drag-handle]")) {
-      event.preventDefault();
-      return;
-    }
-
-    node.classList.add("is-dragging");
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", "");
-  });
-
-  node.addEventListener("dragend", () => {
-    node.classList.remove("is-dragging");
-    document.querySelectorAll(".item-editor.is-drop-target").forEach((item) => {
-      item.classList.remove("is-drop-target");
-    });
-    saveDraft("Ordre mis à jour");
-    scheduleAutoGenerate();
-  });
-
-  node.addEventListener("dragover", (event) => {
-    const dragging = document.querySelector(".item-editor.is-dragging");
-    if (!dragging || dragging === node || dragging.parentElement !== node.parentElement) return;
-
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    node.classList.add("is-drop-target");
-
-    const rect = node.getBoundingClientRect();
-    const shouldInsertAfter = event.clientY > rect.top + rect.height / 2;
-    if (shouldInsertAfter) {
-      node.after(dragging);
-    } else {
-      node.before(dragging);
-    }
-  });
-
-  node.addEventListener("dragleave", () => {
-    node.classList.remove("is-drop-target");
-  });
+  saveDraft("Ordre mis à jour");
+  scheduleAutoGenerate();
 }
 
 function refreshItemHeader(node, groupName) {
