@@ -717,8 +717,8 @@ textarea:focus {
 .item-meta {
   color: var(--cv-muted);
   flex: 0 1 45%;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 400;
   text-align: right;
 }
 
