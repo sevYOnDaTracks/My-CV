@@ -635,7 +635,7 @@ async function openProfile(profileId) {
   currentApplicationOffer = "";
   currentMatchScore = 0;
   activeProfileName.textContent = data.profile.name;
-  applyDraft(data.profile.payload);
+  if (!applyDraft(data.profile.payload)) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data.profile.payload));
   showEditor();
   scheduleAutoGenerate();
@@ -686,7 +686,7 @@ async function openCvDraft(draftId) {
   currentApplicationOffer = data.draft.job_offer;
   currentMatchScore = data.draft.match_score;
   activeProfileName.textContent = data.draft.title;
-  applyDraft(data.draft.payload);
+  if (!applyDraft(data.draft.payload)) return;
   preview.innerHTML = data.draft.generated_html || preview.innerHTML;
   applyCvFont();
   applyCvTheme();
