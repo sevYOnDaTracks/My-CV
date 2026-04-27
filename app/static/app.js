@@ -223,12 +223,10 @@ function addItem(groupName, data = {}) {
 
 function setupDragAndDrop(node) {
   const handle = node.querySelector("[data-drag-handle]");
-  handle.addEventListener("pointerdown", () => {
-    node.draggable = true;
-  });
+  node.draggable = true;
 
-  handle.addEventListener("pointerup", () => {
-    node.draggable = false;
+  handle.addEventListener("click", (event) => {
+    event.stopPropagation();
   });
 
   node.addEventListener("dragstart", (event) => {
@@ -244,7 +242,6 @@ function setupDragAndDrop(node) {
 
   node.addEventListener("dragend", () => {
     node.classList.remove("is-dragging");
-    node.draggable = false;
     document.querySelectorAll(".item-editor.is-drop-target").forEach((item) => {
       item.classList.remove("is-drop-target");
     });

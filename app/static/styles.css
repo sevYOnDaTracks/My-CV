@@ -279,7 +279,7 @@ button:hover {
 .input-panel {
   height: 100vh;
   overflow: auto;
-  padding: 22px 22px 122px;
+  padding: 22px;
 }
 
 .brand,
@@ -315,21 +315,17 @@ button:hover {
 }
 
 .sticky-actions {
-  position: sticky;
-  bottom: 0;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin: 28px -22px -122px;
+  margin: 28px -22px -22px;
   padding: 14px 22px 18px;
   border-top: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 -12px 30px rgba(24, 33, 47, 0.08);
-  backdrop-filter: blur(10px);
+  background: #fff;
 }
 
 #cvForm {
-  padding-bottom: 18px;
+  padding-bottom: 0;
 }
 
 form,
