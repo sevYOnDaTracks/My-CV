@@ -333,7 +333,7 @@ button:hover {
   padding: 12px 14px;
   border: 1px solid rgba(15, 118, 110, 0.28);
   border-radius: 10px;
-  background: #ffffff;
+  background: #fff;
   box-shadow: var(--shadow);
   color: var(--accent-dark);
   font-weight: 800;

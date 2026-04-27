@@ -314,6 +314,8 @@ function saveDraft(message = "Brouillon sauvegardé") {
 }
 
 function showToast(message) {
+  if (!toast) return;
+
   toast.textContent = message;
   toast.classList.add("is-visible");
   clearTimeout(showToast.timer);
@@ -857,12 +859,13 @@ function loadSample() {
   scheduleAutoGenerate();
 }
 
-document.querySelectorAll("[data-add]").forEach((button) => {
-  button.addEventListener("click", () => {
-    addItem(button.dataset.add);
-    saveDraft("Sauvegarde automatique");
-    scheduleAutoGenerate();
-  });
+document.addEventListener("click", (event) => {
+  const addButton = event.target.closest("[data-add]");
+  if (!addButton) return;
+
+  addItem(addButton.dataset.add);
+  saveDraft("Sauvegarde automatique");
+  scheduleAutoGenerate();
 });
 
 document.querySelector("#loadSample").addEventListener("click", loadSample);
