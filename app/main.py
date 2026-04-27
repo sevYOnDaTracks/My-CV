@@ -672,10 +672,11 @@ def build_cv_html(profile: Profile, job_offer: str, keywords: list[str], profile
     def render_item(item: ProfileItem) -> str:
         bullets = split_lines(item.description)
         bullet_html = "".join(f"<li>{escape(bullet)}</li>" for bullet in bullets[:5])
-        meta = " - ".join(part for part in [item.organization, item.period] if part)
+        meta = " · ".join(part for part in [item.organization, item.period] if part)
         return (
             "<article class='cv-item'>"
-            f"<div class='item-head'><h3>{escape(item.title)}</h3><span>{escape(meta)}</span></div>"
+            f"<div class='item-head'><h3>{escape(item.title)}</h3></div>"
+            f"{f'<p class=\"item-meta\">{escape(meta)}</p>' if meta else ''}"
             f"<ul>{bullet_html}</ul>"
             "</article>"
         )
