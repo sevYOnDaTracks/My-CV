@@ -205,6 +205,16 @@ function addItem(groupName, data = {}) {
     node.classList.toggle("is-collapsed");
   });
 
+  node.querySelector("[data-move-up]").addEventListener("click", (event) => {
+    event.stopPropagation();
+    moveItem(node, "up");
+  });
+
+  node.querySelector("[data-move-down]").addEventListener("click", (event) => {
+    event.stopPropagation();
+    moveItem(node, "down");
+  });
+
   node.querySelectorAll("[data-field]").forEach((field) => {
     field.addEventListener("input", () => refreshItemHeader(node, groupName));
     field.addEventListener("change", () => refreshItemHeader(node, groupName));
@@ -217,6 +227,20 @@ function addItem(groupName, data = {}) {
   });
   groups[groupName].appendChild(node);
   if (Object.keys(data).length) node.classList.add("is-collapsed");
+}
+
+function moveItem(node, direction) {
+  const sibling = direction === "up" ? node.previousElementSibling : node.nextElementSibling;
+  if (!sibling) return;
+
+  if (direction === "up") {
+    node.parentElement.insertBefore(node, sibling);
+  } else {
+    node.parentElement.insertBefore(sibling, node);
+  }
+
+  saveDraft("Ordre mis à jour");
+  scheduleAutoGenerate();
 }
 
 function refreshItemHeader(node, groupName) {
