@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Générator CV</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <section id="homeView" class="home-view">
+    <header id="homeDashboard" class="home-header">
+      <div>
+        <h1>Mon CV Parfait</h1>
+        <p>Construis tes profils, puis transforme une offre en CV ciblé.</p>
+      </div>
+    </header>
+
+    <section id="workflowDashboard" class="workflow-grid">
+      <button class="workflow-card" type="button" data-workflow="profiles">
+        <span class="workflow-icon">P</span>
+        <strong>Profils</strong>
+        <small>Créer, éditer et organiser tes profils Dev, Data, IA ou hybrides.</small>
+      </button>
+      <button class="workflow-card" type="button" data-workflow="applications">
+        <span class="workflow-icon">CV</span>
+        <strong>Candidature</strong>
+        <small>Coller une offre, choisir le meilleur profil et créer un brouillon CV.</small>
+      </button>
+    </section>
+
+    <section id="profileQuickStart" class="quick-start workflow-panel is-hidden">
+      <div class="workflow-head">
+        <div>
+          <h2>Profils</h2>
+          <p>Gère ta matière première : compétences, expériences, formations et positionnement.</p>
+        </div>
+        <div class="workflow-actions">
+          <button type="button" data-home-dashboard>Accueil</button>
+          <button id="createProfile" class="primary" type="button">Créer un profil</button>
+        </div>
+      </div>
+      <h2>Démarrage rapide</h2>
+      <div class="quick-actions">
+        <button type="button" data-create-mode="data">Profil Data</button>
+        <button type="button" data-create-mode="ai">Profil IA</button>
+        <button type="button" data-create-mode="dev">Profil Dev</button>
+        <button type="button" data-create-mode="hybrid">Profil Hybride</button>
+      </div>
+    </section>
+
+    <section id="applicationPanel" class="application-panel workflow-panel is-hidden">
+      <div class="workflow-head">
+        <div>
+          <h2>Candidature</h2>
+          <p>Crée un brouillon CV à partir d'une offre et de tes profils existants.</p>
+        </div>
+        <button type="button" data-home-dashboard>Accueil</button>
+      </div>
+      <div>
+        <h2>Nouvelle candidature</h2>
+        <p class="field-help">Colle une offre : l'app choisit le profil le plus adapté et crée un brouillon CV.</p>
+      </div>
+      <div class="field-grid">
+        <label>Poste visé<input id="applicationTitle" placeholder="Data Engineer"></label>
+        <label>Entreprise<input id="applicationCompany" placeholder="Entreprise"></label>
+      </div>
+      <label>Offre d'emploi
+        <textarea id="applicationOffer" rows="7" placeholder="Colle ici l'offre complète."></textarea>
+      </label>
+      <div class="actions">
+        <span id="applicationStatus" class="muted">Analyse locale pour l'instant, Ollama viendra ensuite.</span>
+        <button id="analyzeOffer" class="primary" type="button">Créer un brouillon</button>
+      </div>
+    </section>
+
+    <section id="profilesListSection" class="workflow-panel is-hidden">
+      <div class="section-head">
+        <h2>Mes profils</h2>
+        <span id="profileCount" class="muted">0 profil</span>
+      </div>
+      <div id="profileGrid" class="profile-grid"></div>
+    </section>
+
+    <section id="draftListSection" class="workflow-panel is-hidden">
+      <div class="section-head">
+        <h2>Brouillons de CV</h2>
+        <span id="cvDraftCount" class="muted">0 brouillon</span>
+      </div>
+      <div id="cvDraftGrid" class="profile-grid"></div>
+    </section>
+  </section>
+
+  <main id="editorView" class="app-shell is-hidden">
+    <aside class="panel input-panel">
+      <div class="brand">
+        <span id="activeProfileName">Générator CV</span>
+        <div class="brand-actions">
+          <button id="backHome" type="button">Accueil</button>
+          <button id="loadSample" type="button">Exemple</button>
+        </div>
+      </div>
+
+      <form id="cvForm">
+        <div class="field-grid">
+          <label>Nom complet<input name="name" placeholder="Prénom Nom"></label>
+          <label>Titre cible<input name="target_title" placeholder="Full Stack / Data / AI Engineer"></label>
+          <label>Localisation<input name="location" placeholder="Paris, France"></label>
+          <label>Email<input name="email" placeholder="email@domaine.com"></label>
+          <label>Téléphone<input name="phone" placeholder="+33 ..."></label>
+          <label>Liens<input name="links" placeholder="LinkedIn | GitHub | Portfolio"></label>
+        </div>
+
+        <fieldset class="mode-switch">
+          <legend>Positionnement</legend>
+          <label><input type="radio" name="profile_mode" value="auto" checked> Auto</label>
+          <label><input type="radio" name="profile_mode" value="hybrid"> Hybride</label>
+          <label><input type="radio" name="profile_mode" value="dev"> Dev</label>
+          <label><input type="radio" name="profile_mode" value="data"> Data</label>
+          <label><input type="radio" name="profile_mode" value="ai"> IA</label>
+        </fieldset>
+
+        <label>Résumé global
+          <textarea name="summary" rows="4" placeholder="Décris ton profil complet, ton positionnement et tes forces."></textarea>
+        </label>
+
+        <section class="repeatable">
+          <div class="section-head">
+            <div>
+              <h2>Compétences</h2>
+              <p class="field-help">Crée tes propres catégories et choisis ce qui apparaît dans le CV.</p>
+            </div>
+            <button type="button" data-add="skillGroups">Ajouter</button>
+          </div>
+          <div id="skillGroups"></div>
+        </section>
+
+        <section class="repeatable">
+          <div class="section-head">
+            <h2>Expériences</h2>
+            <button type="button" data-add="experiences">Ajouter</button>
+          </div>
+          <div id="experiences"></div>
+        </section>
+
+        <section class="repeatable">
+          <div class="section-head">
+            <h2>Formations</h2>
+            <button type="button" data-add="educationItems">Ajouter</button>
+          </div>
+          <div id="educationItems"></div>
+        </section>
+
+        <label>Langues
+          <textarea name="languages" rows="3" placeholder="Français courant&#10;Anglais professionnel"></textarea>
+        </label>
+
+        <label>Offre d'emploi
+          <textarea name="job_offer" rows="8" placeholder="Colle ici l'offre d'emploi complète."></textarea>
+        </label>
+
+        <div class="actions">
+          <label class="toggle"><input type="checkbox" name="use_ollama"> Optimiser avec Ollama</label>
+          <button class="primary" type="submit">Générer le CV</button>
+        </div>
+      </form>
+
+      <div class="sticky-actions">
+        <button id="resetDraft" type="button">Reset</button>
+        <button id="saveDraft" class="primary" type="button">Sauver</button>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <div class="toolbar">
+        <div>
+          <strong>CV ATS</strong>
+          <span id="status">Prêt</span>
+        </div>
+        <div class="toolbar-actions">
+          <label class="font-control">Police
+            <select id="cvFont" name="cv_font">
+              <option value="Arial, Helvetica, sans-serif">Arial</option>
+              <option value="Calibri, Arial, sans-serif">Calibri</option>
+              <option value="Aptos, Calibri, Arial, sans-serif">Aptos</option>
+              <option value=&quot;'Times New Roman', Times, serif&quot;>Times New Roman</option>
+              <option value="Georgia, serif">Georgia</option>
+            </select>
+          </label>
+          <label class="font-control">Thème
+            <select id="cvTheme" name="cv_theme">
+              <option value="theme-slate">Noir sobre</option>
+              <option value="theme-navy">Bleu marine</option>
+              <option value="theme-teal">Vert tech</option>
+              <option value="theme-burgundy">Bordeaux</option>
+              <option value="theme-graphite">Graphite</option>
+            </select>
+          </label>
+          <button id="copyHtml" type="button">Copier HTML</button>
+          <button id="printCv" type="button">PDF</button>
+        </div>
+      </div>
+      <div id="keywords" class="keywords"></div>
+      <div id="cvPreview" class="preview">
+        <section class="empty-state">
+          <h1>Ton CV ciblé apparaîtra ici</h1>
+          <p>Remplis ta palette, colle une offre, puis génère une version adaptée.</p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <template id="itemTemplate">
+    <article class="item-editor">
+      <button class="item-toggle" type="button" data-toggle-item>
+        <span data-item-title>Nouvel élément</span>
+        <span data-item-meta></span>
+        <span class="chevron">⌄</span>
+      </button>
+      <div class="item-body">
+      <div class="field-grid">
+        <label>Intitulé<input data-field="title" placeholder="Software Engineer"></label>
+        <label>Organisation<input data-field="organization" placeholder="Entreprise"></label>
+        <label>Période<input data-field="period" placeholder="2022 - 2024"></label>
+        <label>Tags<input data-field="tags" placeholder="Python, Data, API"></label>
+      </div>
+      <label>Description
+        <textarea data-field="description" rows="4" placeholder="- Réalisation mesurable&#10;- Stack technique&#10;- Impact métier"></textarea>
+      </label>
+      <button type="button" data-remove>Retirer</button>
+      </div>
+    </article>
+  </template>
+
+  <template id="educationTemplate">
+    <article class="item-editor">
+      <button class="item-toggle" type="button" data-toggle-item>
+        <span data-item-title>Nouvelle formation</span>
+        <span data-item-meta></span>
+        <span class="chevron">⌄</span>
+      </button>
+      <div class="item-body">
+      <div class="field-grid">
+        <label>Diplôme / Certification<input data-field="title" placeholder="Master Data Engineering"></label>
+        <label>École / Organisme<input data-field="organization" placeholder="Université / École / Plateforme"></label>
+        <label>Période<input data-field="period" placeholder="2021 - 2023"></label>
+        <label>Tags<input data-field="tags" placeholder="Data, Cloud, IA"></label>
+      </div>
+        <label>Détails
+          <textarea data-field="description" rows="3" placeholder="- Spécialisation&#10;- Projet majeur&#10;- Mention ou certification"></textarea>
+        </label>
+        <label class="toggle"><input type="checkbox" data-field="include" checked> Inclure dans le CV</label>
+      <button type="button" data-remove>Retirer</button>
+      </div>
+    </article>
+  </template>
+
+  <template id="skillGroupTemplate">
+    <article class="item-editor skill-editor">
+      <button class="item-toggle" type="button" data-toggle-item>
+        <span data-item-title>Nouvelle catégorie</span>
+        <span data-item-meta></span>
+        <span class="chevron">⌄</span>
+      </button>
+      <div class="item-body">
+      <div class="field-grid">
+        <label>Catégorie<input data-field="name" placeholder="Backend / APIs"></label>
+        <label class="toggle"><input type="checkbox" data-field="include" checked> Inclure dans le CV</label>
+      </div>
+      <label>Compétences
+        <textarea data-field="skills" rows="3" placeholder="FastAPI, Flask, API REST, Spring Boot"></textarea>
+      </label>
+      <button type="button" data-remove>Retirer</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
