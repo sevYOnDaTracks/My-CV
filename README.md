@@ -9,7 +9,7 @@ Application locale de création et de gestion de CV avec aperçu A4 en temps ré
 - Modèles de départ et modèles personnels créés depuis un CV
 - Aperçu A4 instantané pendant la saisie
 - Choix du thème et de la police
-- Adaptation facultative du contenu à une offre d'emploi
+- Adaptation facultative du contenu à une offre d'emploi, avec score de correspondance et mots-clés détectés
 - Export PDF par l'impression du navigateur et export HTML autonome
 - Sauvegarde automatique dans SQLite
 
@@ -50,9 +50,11 @@ http://127.0.0.1:8000
 
 ## Ollama
 
-Ollama est optionnel pour cette V1. Si Ollama tourne sur `http://localhost:11434`, l'application peut demander une reformulation plus naturelle du CV.
+Ollama est optionnel. Dans le panneau « Adapter à une offre », cocher « Reformuler avec l'IA locale (Ollama) »
+pour demander une reformulation du CV via un modèle tournant sur `http://localhost:11434`. Si Ollama n'est
+pas disponible, le CV généré normalement est conservé et un message l'indique.
 
-Le modèle par défaut est configurable dans `app/main.py`.
+Le modèle par défaut est configurable dans `app/main.py` (`OLLAMA_MODEL`).
 
 ## Sauvegarde locale
 

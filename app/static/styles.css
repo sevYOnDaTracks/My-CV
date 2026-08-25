@@ -1,13 +1,10 @@
 :root {
-  --bg: #e8edf3;
-  --panel: #ffffff;
   --ink: #18212f;
   --muted: #667085;
   --line: #d9e0ea;
   --accent: #0f766e;
   --accent-dark: #115e59;
   --soft: #f7f9fb;
-  --warn: #9a3412;
   --danger-color: #9f1239;
   --shadow: 0 18px 42px rgba(24, 33, 47, 0.12);
   --shadow-soft: 0 8px 24px rgba(24, 33, 47, 0.08);
@@ -114,154 +111,15 @@ button:hover {
   background-clip: text;
 }
 
-.home-header p,
-.quick-start h2 {
+.home-header p {
   margin: 6px 0 0;
   color: var(--muted);
 }
 
-.quick-start,
-.application-panel {
-  display: grid;
-  gap: 12px;
-  padding: 20px;
-  border: 1px solid rgba(217, 224, 234, 0.78);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.application-panel {
-  background: #fff;
-  box-shadow: var(--shadow-soft);
-}
-
-.quick-actions,
 .profile-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
-}
-
-/* ── Workflow cards ──────────────────────────────── */
-
-.workflow-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.workflow-card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 8px 16px;
-  min-height: 150px;
-  padding: 24px;
-  border: 1.5px solid var(--line);
-  border-radius: 18px;
-  background: linear-gradient(145deg, #ffffff, #f8faff);
-  text-align: left;
-  box-shadow: var(--shadow-soft);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.workflow-card:hover {
-  border-color: rgba(15, 118, 110, 0.45);
-  box-shadow: var(--shadow);
-  transform: translateY(-3px);
-}
-
-.workflow-card strong {
-  align-self: end;
-  font-size: 22px;
-  letter-spacing: -0.2px;
-}
-
-.workflow-card small {
-  grid-column: 2;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.workflow-icon {
-  display: grid;
-  grid-row: span 2;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: rgba(15, 118, 110, 0.1);
-  color: var(--accent-dark);
-  border: 1px solid rgba(15, 118, 110, 0.15);
-  transition: background 0.2s ease;
-}
-
-[data-workflow="applications"] .workflow-icon {
-  background: rgba(29, 78, 216, 0.09);
-  color: #1d4ed8;
-  border-color: rgba(29, 78, 216, 0.15);
-}
-
-.workflow-card:hover .workflow-icon {
-  background: rgba(15, 118, 110, 0.16);
-}
-
-[data-workflow="applications"]:hover .workflow-icon {
-  background: rgba(29, 78, 216, 0.14);
-}
-
-/* ── Workflow panels ─────────────────────────────── */
-
-.workflow-panel {
-  display: grid;
-  gap: 16px;
-  animation: fadeIn 0.2s ease;
-}
-
-.workflow-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.workflow-head h2,
-.workflow-head p {
-  margin: 0;
-}
-
-.workflow-head p {
-  margin-top: 5px;
-  color: var(--muted);
-}
-
-.workflow-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.quick-actions button,
-.profile-card {
-  text-align: left;
-  background: white;
-}
-
-.quick-actions button {
-  position: relative;
-  min-height: 74px;
-  padding: 18px;
-  border-radius: 12px;
-  font-weight: 800;
-}
-
-.quick-actions button::after {
-  content: "Créer";
-  display: block;
-  margin-top: 7px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 /* ── Profile / draft cards ───────────────────────── */
@@ -270,9 +128,11 @@ button:hover {
   position: relative;
   display: grid;
   gap: 12px;
+  text-align: left;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 18px;
+  background: white;
   box-shadow: var(--shadow-soft);
   transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
@@ -310,29 +170,6 @@ button:hover {
   flex-wrap: wrap;
   gap: 8px;
 }
-
-/* ── Mode badge ──────────────────────────────────── */
-
-.mode-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  vertical-align: middle;
-  background: rgba(15, 118, 110, 0.08);
-  color: var(--accent-dark);
-  border: 1px solid rgba(15, 118, 110, 0.18);
-}
-
-.mode-badge.mode-data   { background: rgba(29, 78, 216, 0.08);  color: #1e40af; border-color: rgba(29, 78, 216, 0.2); }
-.mode-badge.mode-ai     { background: rgba(109, 40, 217, 0.08); color: #6d28d9; border-color: rgba(109, 40, 217, 0.2); }
-.mode-badge.mode-dev    { background: rgba(15, 118, 110, 0.08); color: var(--accent-dark); border-color: rgba(15, 118, 110, 0.2); }
-.mode-badge.mode-hybrid { background: rgba(234, 88, 12, 0.08);  color: #c2410c; border-color: rgba(234, 88, 12, 0.2); }
-.mode-badge.mode-auto   { background: rgba(100, 116, 139, 0.08); color: #475569; border-color: rgba(100, 116, 139, 0.2); }
 
 /* ── Editor shell ────────────────────────────────── */
 
@@ -587,10 +424,6 @@ textarea:focus {
   justify-self: start;
 }
 
-.skill-editor textarea {
-  min-height: 86px;
-}
-
 .toggle {
   display: flex;
   grid-auto-flow: column;
@@ -599,49 +432,6 @@ textarea:focus {
 }
 
 .toggle input {
-  width: auto;
-}
-
-/* ── Mode switch ─────────────────────────────────── */
-
-.mode-switch {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #fbfcfe;
-}
-
-.mode-switch legend {
-  padding: 0 5px;
-  color: #344054;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.mode-switch label {
-  display: flex;
-  grid-auto-flow: column;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 7px 10px;
-  background: #fff;
-  font-size: 13px;
-  transition: border-color 0.16s ease, background 0.16s ease;
-}
-
-.mode-switch label:has(input:checked) {
-  border-color: rgba(15, 118, 110, 0.55);
-  background: rgba(15, 118, 110, 0.08);
-  color: var(--accent-dark);
-}
-
-.mode-switch input {
   width: auto;
 }
 
@@ -671,17 +461,6 @@ textarea:focus {
 .toolbar-info strong {
   font-size: 14px;
   color: var(--ink);
-}
-
-.toolbar-status {
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-
-.toolbar-status > span:first-child {
-  color: var(--muted);
-  font-size: 13px;
 }
 
 .toolbar-actions {
@@ -766,12 +545,6 @@ textarea:focus {
   transition: border-color 0.15s, background 0.15s;
 }
 
-.keywords span.kw-hot {
-  background: rgba(15, 118, 110, 0.08);
-  color: var(--accent-dark);
-  border-color: rgba(15, 118, 110, 0.25);
-}
-
 /* ── Preview ─────────────────────────────────────── */
 
 .preview {
@@ -789,18 +562,6 @@ textarea:focus {
   border-radius: 18px;
   text-align: center;
   box-shadow: var(--shadow-soft);
-}
-
-.empty-icon {
-  display: inline-flex;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  margin-bottom: 16px;
-  border-radius: 18px;
-  background: rgba(15, 118, 110, 0.07);
-  color: var(--accent-dark);
-  border: 1px solid rgba(15, 118, 110, 0.14);
 }
 
 .empty-state h1 {
@@ -832,10 +593,6 @@ textarea:focus {
   box-shadow: var(--shadow);
   font-family: var(--cv-font, Arial, Helvetica, sans-serif);
   line-height: 1.42;
-}
-
-.cv-page:focus {
-  outline: 2px solid rgba(15, 118, 110, 0.24);
 }
 
 .cv-header {
@@ -983,39 +740,10 @@ textarea:focus {
   animation: slideUp 0.18s ease;
 }
 
-.modal-title {
-  margin: 0 0 10px;
-  font-size: 19px;
-  color: var(--ink);
-}
-
-.modal-desc {
-  margin: 0 0 18px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.modal-input {
-  width: 100%;
-  margin-bottom: 18px;
-}
-
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-}
-
-.modal-footer .danger-btn {
-  border-color: var(--danger-color);
-  background: linear-gradient(135deg, #be123c, #9f1239);
-  color: white;
-  font-weight: 700;
-}
-
-.modal-footer .danger-btn:hover {
-  background: #9f1239;
 }
 
 /* ── Loading state ───────────────────────────────── */
@@ -1082,15 +810,6 @@ textarea:focus {
   }
 
   .home-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .workflow-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .workflow-head {
     align-items: flex-start;
     flex-direction: column;
   }
