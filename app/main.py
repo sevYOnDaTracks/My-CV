@@ -4,7 +4,6 @@ import json
 import re
 import sqlite3
 import webbrowser
-from io import BytesIO
 from collections import Counter
 from datetime import datetime, timezone
 from html import escape
@@ -15,7 +14,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -101,79 +100,6 @@ class TemplatePayload(BaseModel):
     description: str = ""
     payload: dict = Field(default_factory=dict)
     generated_html: str = ""
-
-
-class PdfExportPayload(BaseModel):
-    title: str = "CV"
-    payload: dict = Field(default_factory=dict)
-
-
-def build_pdf_document(export_payload: PdfExportPayload) -> bytes:
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
-
-    profile = Profile(**export_payload.payload.get("profile", {}))
-    theme = export_payload.payload.get("cv_theme", "theme-slate")
-    accent_colors = {
-        "theme-slate": "#18212f", "theme-navy": "#17365d", "theme-teal": "#0f766e",
-        "theme-burgundy": "#7f1d3a", "theme-graphite": "#30343b",
-    }
-    accent = colors.HexColor(accent_colors.get(theme, "#18212f"))
-    buffer = BytesIO()
-    document = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=14 * mm, leftMargin=14 * mm,
-                                 topMargin=12 * mm, bottomMargin=12 * mm,
-                                 title=export_payload.title, author=profile.name)
-    base = getSampleStyleSheet()
-    name_style = ParagraphStyle("Name", parent=base["Title"], fontName="Helvetica-Bold", fontSize=24,
-                                leading=28, textColor=accent, spaceAfter=3)
-    title_style = ParagraphStyle("Title", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=12,
-                                 leading=15, textColor=accent, spaceAfter=5)
-    contact_style = ParagraphStyle("Contact", parent=base["Normal"], fontSize=9, leading=12, spaceAfter=9)
-    section_style = ParagraphStyle("Section", parent=base["Heading2"], fontName="Helvetica-Bold", fontSize=10,
-                                   leading=13, textColor=accent, spaceBefore=9, spaceAfter=5,
-                                   borderWidth=0, borderPadding=0)
-    body_style = ParagraphStyle("Body", parent=base["Normal"], fontSize=9.5, leading=13, spaceAfter=3)
-    alignment = {"left": TA_LEFT, "justify": TA_JUSTIFY, "center": TA_CENTER}.get(profile.summary_alignment, TA_LEFT)
-    summary_style = ParagraphStyle("Summary", parent=body_style, alignment=alignment)
-    item_title_style = ParagraphStyle("ItemTitle", parent=body_style, fontName="Helvetica-Bold", spaceBefore=5, spaceAfter=2)
-    bullet_style = ParagraphStyle("Bullet", parent=body_style, leftIndent=10, firstLineIndent=-7, bulletIndent=2,
-                                  spaceAfter=1.5)
-    story = [Paragraph(escape(profile.name or "Votre nom"), name_style),
-             Paragraph(escape(profile.target_title or "Titre professionnel"), title_style)]
-    contacts = " | ".join(part for part in [profile.location, profile.email, profile.phone, profile.links] if part)
-    if contacts: story.append(Paragraph(escape(contacts), contact_style))
-
-    def section(title: str) -> None:
-        story.extend([Spacer(1, 2), Paragraph(escape(title.upper()), section_style)])
-
-    def render_items(items: list[ProfileItem]) -> None:
-        for item in items:
-            if not item.include or not (item.title or item.description): continue
-            meta = " — ".join(part for part in [item.organization, item.period] if part)
-            heading = escape(item.title) + (f" &nbsp; <font color='#667085'>{escape(meta)}</font>" if meta else "")
-            story.append(Paragraph(heading, item_title_style))
-            for line in split_lines(item.description): story.append(Paragraph(escape(line), bullet_style, bulletText="•"))
-
-    section("Profil"); story.append(Paragraph(escape(profile.summary or "Ajoutez une présentation professionnelle."), summary_style))
-    visible_skills = [group for group in profile.skill_groups if group.include and (group.name or group.skills)]
-    if visible_skills:
-        section("Compétences")
-        for group in visible_skills:
-            story.append(Paragraph(f"<b>{escape(group.name)}</b> : {escape(group.skills)}", body_style))
-    visible_experiences = [item for item in profile.experiences if item.include and (item.title or item.description)]
-    if visible_experiences: section("Expérience professionnelle"); render_items(visible_experiences)
-    visible_education = [item for item in profile.education_items if item.include and (item.title or item.description)]
-    if visible_education: section("Formation"); render_items(visible_education)
-    languages = split_lines(profile.languages)
-    if languages:
-        section("Langues")
-        for language in languages: story.append(Paragraph(escape(language), bullet_style, bulletText="•"))
-    document.build(story)
-    return buffer.getvalue()
 
 
 def init_database() -> None:
@@ -781,16 +707,6 @@ def get_template(template_id: str) -> dict:
 def delete_template(template_id: str) -> dict:
     delete_template_payload(template_id)
     return {"deleted": True}
-
-
-@app.post("/api/export/pdf")
-def export_pdf(payload: PdfExportPayload) -> Response:
-    filename = re.sub(r"[^a-zA-Z0-9_-]+", "-", payload.title).strip("-") or "cv"
-    return Response(
-        content=build_pdf_document(payload),
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'},
-    )
 
 
 @app.post("/api/generate", response_model=GenerateResponse)
