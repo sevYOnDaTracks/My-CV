@@ -850,13 +850,13 @@ textarea:focus {
 
 @page {
   size: A4 portrait;
-  margin: 0;
+  margin: 12mm 14mm;
 }
 
 @media print {
   html,
   body {
-    width: 210mm;
+    width: auto;
     background: white;
     margin: 0;
     padding: 0;
@@ -880,10 +880,10 @@ textarea:focus {
 
   .cv-page {
     box-sizing: border-box;
-    width: 210mm;
-    min-height: 297mm;
+    width: auto;
+    min-height: auto;
     margin: 0;
-    padding: 12mm 14mm;
+    padding: 0;
     border: 0;
     box-shadow: none;
     -webkit-print-color-adjust: exact;
