@@ -8,6 +8,7 @@
   --accent-dark: #115e59;
   --soft: #f7f9fb;
   --warn: #9a3412;
+  --danger-color: #9f1239;
   --shadow: 0 18px 42px rgba(24, 33, 47, 0.12);
   --shadow-soft: 0 8px 24px rgba(24, 33, 47, 0.08);
 }
@@ -60,6 +61,18 @@ button:hover {
   background: var(--accent-dark);
 }
 
+.danger {
+  color: var(--danger-color);
+  border-color: rgba(159, 18, 57, 0.3);
+}
+
+.danger:hover {
+  background: rgba(159, 18, 57, 0.06);
+  border-color: rgba(159, 18, 57, 0.6);
+  box-shadow: 0 4px 12px rgba(159, 18, 57, 0.12);
+  transform: translateY(-1px);
+}
+
 .is-hidden {
   display: none !important;
 }
@@ -68,6 +81,8 @@ button:hover {
   color: var(--muted);
   font-size: 13px;
 }
+
+/* ── Home view ──────────────────────────────────── */
 
 .home-view {
   display: grid;
@@ -82,18 +97,21 @@ button:hover {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 28px;
+  padding: 28px 32px;
   border: 1px solid rgba(217, 224, 234, 0.9);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.82);
+  background: linear-gradient(135deg, #ffffff 0%, #f4f8ff 100%);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(10px);
 }
 
 .home-header h1 {
   margin: 0;
   font-size: 38px;
-  letter-spacing: 0;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--ink) 30%, var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .home-header p,
@@ -124,6 +142,8 @@ button:hover {
   gap: 12px;
 }
 
+/* ── Workflow cards ──────────────────────────────── */
+
 .workflow-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(260px, 1fr));
@@ -133,40 +153,69 @@ button:hover {
 .workflow-card {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 8px 14px;
+  gap: 8px 16px;
   min-height: 150px;
-  padding: 22px;
-  border-radius: 16px;
+  padding: 24px;
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #ffffff, #f8faff);
   text-align: left;
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.workflow-card:hover {
+  border-color: rgba(15, 118, 110, 0.45);
+  box-shadow: var(--shadow);
+  transform: translateY(-3px);
 }
 
 .workflow-card strong {
   align-self: end;
-  font-size: 24px;
+  font-size: 22px;
+  letter-spacing: -0.2px;
 }
 
 .workflow-card small {
   grid-column: 2;
   color: var(--muted);
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .workflow-icon {
   display: grid;
   grid-row: span 2;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   background: rgba(15, 118, 110, 0.1);
   color: var(--accent-dark);
-  font-weight: 900;
+  border: 1px solid rgba(15, 118, 110, 0.15);
+  transition: background 0.2s ease;
 }
+
+[data-workflow="applications"] .workflow-icon {
+  background: rgba(29, 78, 216, 0.09);
+  color: #1d4ed8;
+  border-color: rgba(29, 78, 216, 0.15);
+}
+
+.workflow-card:hover .workflow-icon {
+  background: rgba(15, 118, 110, 0.16);
+}
+
+[data-workflow="applications"]:hover .workflow-icon {
+  background: rgba(29, 78, 216, 0.14);
+}
+
+/* ── Workflow panels ─────────────────────────────── */
 
 .workflow-panel {
   display: grid;
   gap: 16px;
+  animation: fadeIn 0.2s ease;
 }
 
 .workflow-head {
@@ -215,6 +264,8 @@ button:hover {
   font-weight: 700;
 }
 
+/* ── Profile / draft cards ───────────────────────── */
+
 .profile-card {
   position: relative;
   display: grid;
@@ -243,7 +294,7 @@ button:hover {
 
 .profile-card h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   padding-left: 4px;
 }
 
@@ -251,6 +302,7 @@ button:hover {
   margin: 0;
   color: var(--muted);
   padding-left: 4px;
+  font-size: 13px;
 }
 
 .profile-card-actions {
@@ -259,9 +311,30 @@ button:hover {
   gap: 8px;
 }
 
-.danger {
-  color: #9f1239;
+/* ── Mode badge ──────────────────────────────────── */
+
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--accent-dark);
+  border: 1px solid rgba(15, 118, 110, 0.18);
 }
+
+.mode-badge.mode-data   { background: rgba(29, 78, 216, 0.08);  color: #1e40af; border-color: rgba(29, 78, 216, 0.2); }
+.mode-badge.mode-ai     { background: rgba(109, 40, 217, 0.08); color: #6d28d9; border-color: rgba(109, 40, 217, 0.2); }
+.mode-badge.mode-dev    { background: rgba(15, 118, 110, 0.08); color: var(--accent-dark); border-color: rgba(15, 118, 110, 0.2); }
+.mode-badge.mode-hybrid { background: rgba(234, 88, 12, 0.08);  color: #c2410c; border-color: rgba(234, 88, 12, 0.2); }
+.mode-badge.mode-auto   { background: rgba(100, 116, 139, 0.08); color: #475569; border-color: rgba(100, 116, 139, 0.2); }
+
+/* ── Editor shell ────────────────────────────────── */
 
 .app-shell {
   display: grid;
@@ -302,7 +375,7 @@ button:hover {
 }
 
 .brand span {
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 800;
   max-width: 210px;
   overflow: hidden;
@@ -324,19 +397,22 @@ button:hover {
   background: #fff;
 }
 
+/* ── Toast ───────────────────────────────────────── */
+
 .toast {
   position: fixed;
   right: 22px;
   bottom: 22px;
   z-index: 20;
   max-width: 320px;
-  padding: 12px 14px;
+  padding: 12px 16px;
   border: 1px solid rgba(15, 118, 110, 0.28);
   border-radius: 10px;
   background: #fff;
   box-shadow: var(--shadow);
   color: var(--accent-dark);
-  font-weight: 800;
+  font-weight: 700;
+  font-size: 14px;
   opacity: 0;
   pointer-events: none;
   transform: translateY(12px);
@@ -347,6 +423,8 @@ button:hover {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ── Form ────────────────────────────────────────── */
 
 #cvForm {
   padding-bottom: 0;
@@ -400,10 +478,19 @@ textarea:focus {
   gap: 12px;
 }
 
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .section-head h2 {
   margin: 0;
   font-size: 16px;
 }
+
+/* ── Item editor ─────────────────────────────────── */
 
 .item-editor {
   display: grid;
@@ -454,6 +541,7 @@ textarea:focus {
   color: var(--muted);
   font-size: 18px;
   line-height: 1;
+  transition: transform 0.18s ease;
 }
 
 .item-order {
@@ -514,6 +602,8 @@ textarea:focus {
   width: auto;
 }
 
+/* ── Mode switch ─────────────────────────────────── */
+
 .mode-switch {
   display: flex;
   flex-wrap: wrap;
@@ -555,6 +645,8 @@ textarea:focus {
   width: auto;
 }
 
+/* ── Workspace & toolbar ─────────────────────────── */
+
 .workspace {
   display: grid;
   grid-template-rows: auto auto 1fr;
@@ -564,23 +656,39 @@ textarea:focus {
 
 .toolbar {
   z-index: 2;
-  padding: 16px 22px;
-  background: rgba(248, 250, 252, 0.92);
+  padding: 14px 22px;
+  background: rgba(248, 250, 252, 0.95);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(10px);
 }
 
-.toolbar strong {
-  display: block;
+.toolbar-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.toolbar span {
+.toolbar-info strong {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.toolbar-status {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.toolbar-status > span:first-child {
   color: var(--muted);
   font-size: 13px;
 }
 
 .toolbar-actions {
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
 .font-control {
@@ -601,21 +709,70 @@ textarea:focus {
   color: var(--ink);
 }
 
+/* ── Score badge ─────────────────────────────────── */
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+  background: rgba(15, 118, 110, 0.09);
+  color: var(--accent-dark);
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.score-badge.score-low {
+  background: rgba(220, 38, 38, 0.09);
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.22);
+}
+
+.score-badge.score-mid {
+  background: rgba(217, 119, 6, 0.09);
+  color: #b45309;
+  border-color: rgba(217, 119, 6, 0.22);
+}
+
+.score-badge.score-high {
+  background: rgba(15, 118, 110, 0.09);
+  color: var(--accent-dark);
+  border-color: rgba(15, 118, 110, 0.22);
+}
+
+/* ── Keywords ────────────────────────────────────── */
+
 .keywords {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
   padding: 12px 22px 0;
+  min-height: 0;
 }
 
 .keywords span {
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 6px 9px;
-  background: rgba(255, 255, 255, 0.86);
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.9);
   color: var(--muted);
   font-size: 12px;
+  font-weight: 600;
+  transition: border-color 0.15s, background 0.15s;
 }
+
+.keywords span.kw-hot {
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--accent-dark);
+  border-color: rgba(15, 118, 110, 0.25);
+}
+
+/* ── Preview ─────────────────────────────────────── */
 
 .preview {
   min-height: 0;
@@ -624,25 +781,42 @@ textarea:focus {
 }
 
 .empty-state {
-  max-width: 680px;
+  max-width: 560px;
   margin: 80px auto;
-  padding: 28px;
+  padding: 36px 28px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 18px;
   text-align: center;
   box-shadow: var(--shadow-soft);
 }
 
+.empty-icon {
+  display: inline-flex;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 16px;
+  border-radius: 18px;
+  background: rgba(15, 118, 110, 0.07);
+  color: var(--accent-dark);
+  border: 1px solid rgba(15, 118, 110, 0.14);
+}
+
 .empty-state h1 {
   margin: 0 0 8px;
-  font-size: 26px;
+  font-size: 22px;
+  color: var(--ink);
 }
 
 .empty-state p {
   margin: 0;
   color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
 }
+
+/* ── CV page ─────────────────────────────────────── */
 
 .cv-page {
   --cv-primary: #18212f;
@@ -741,6 +915,8 @@ textarea:focus {
   color: var(--cv-primary);
 }
 
+/* ── CV themes ───────────────────────────────────── */
+
 .theme-slate {
   --cv-primary: #18212f;
   --cv-accent: #344054;
@@ -775,6 +951,108 @@ textarea:focus {
   --cv-line: #cbd5e1;
   --cv-muted: #64748b;
 }
+
+/* ── Modal dialog ────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(24, 33, 47, 0.5);
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.15s ease;
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px 28px 22px;
+  width: min(460px, calc(100vw - 40px));
+  box-shadow: 0 32px 80px rgba(24, 33, 47, 0.22);
+  animation: slideUp 0.18s ease;
+}
+
+.modal-title {
+  margin: 0 0 10px;
+  font-size: 19px;
+  color: var(--ink);
+}
+
+.modal-desc {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.modal-input {
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-footer .danger-btn {
+  border-color: var(--danger-color);
+  background: linear-gradient(135deg, #be123c, #9f1239);
+  color: white;
+  font-weight: 700;
+}
+
+.modal-footer .danger-btn:hover {
+  background: #9f1239;
+}
+
+/* ── Loading state ───────────────────────────────── */
+
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.btn-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+
+.btn-loading.btn-load-dark::after {
+  border-color: rgba(15, 118, 110, 0.2);
+  border-top-color: var(--accent);
+}
+
+/* ── Animations ──────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ──────────────────────────────────── */
 
 @media (max-width: 980px) {
   body {
@@ -829,7 +1107,19 @@ textarea:focus {
     flex-basis: auto;
     text-align: left;
   }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .toolbar-actions {
+    justify-content: flex-end;
+    width: 100%;
+  }
 }
+
+/* ── Print ───────────────────────────────────────── */
 
 @media print {
   body {

@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-store">
   <title>Générator CV</title>
-  <link rel="stylesheet" href="/static/styles.css?v=20260427-2">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='2' width='16' height='20' rx='2'/%3E%3Cline x1='8' y1='8' x2='16' y2='8'/%3E%3Cline x1='8' y1='12' x2='16' y2='12'/%3E%3Cline x1='8' y1='16' x2='12' y2='16'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css?v=20260511">
 </head>
 <body>
   <section id="homeView" class="home-view">
@@ -18,12 +19,16 @@
 
     <section id="workflowDashboard" class="workflow-grid">
       <button class="workflow-card" type="button" data-workflow="profiles">
-        <span class="workflow-icon">P</span>
+        <span class="workflow-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+        </span>
         <strong>Profils</strong>
         <small>Créer, éditer et organiser tes profils Dev, Data, IA ou hybrides.</small>
       </button>
       <button class="workflow-card" type="button" data-workflow="applications">
-        <span class="workflow-icon">CV</span>
+        <span class="workflow-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+        </span>
         <strong>Candidature</strong>
         <small>Coller une offre, choisir le meilleur profil et créer un brouillon CV.</small>
       </button>
@@ -166,16 +171,19 @@
       </form>
 
       <div class="sticky-actions">
-        <button id="resetDraft" type="button">Reset</button>
+        <button id="resetDraft" class="danger" type="button">Reset</button>
         <button id="saveDraft" class="primary" type="button">Sauver</button>
       </div>
     </aside>
 
     <section class="workspace">
       <div class="toolbar">
-        <div>
+        <div class="toolbar-info">
           <strong>CV ATS</strong>
-          <span id="status">Prêt</span>
+          <div class="toolbar-status">
+            <span id="status">Prêt</span>
+            <span id="scoreBadge" class="score-badge is-hidden"></span>
+          </div>
         </div>
         <div class="toolbar-actions">
           <label class="font-control">Police
@@ -183,7 +191,7 @@
               <option value="Arial, Helvetica, sans-serif">Arial</option>
               <option value="Calibri, Arial, sans-serif">Calibri</option>
               <option value="Aptos, Calibri, Arial, sans-serif">Aptos</option>
-              <option value=&quot;'Times New Roman', Times, serif&quot;>Times New Roman</option>
+              <option value="'Times New Roman', Times, serif">Times New Roman</option>
               <option value="Georgia, serif">Georgia</option>
             </select>
           </label>
@@ -203,6 +211,9 @@
       <div id="keywords" class="keywords"></div>
       <div id="cvPreview" class="preview">
         <section class="empty-state">
+          <div class="empty-icon" aria-hidden="true">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+          </div>
           <h1>Ton CV ciblé apparaîtra ici</h1>
           <p>Remplis ta palette, colle une offre, puis génère une version adaptée.</p>
         </section>
@@ -222,16 +233,16 @@
         <span class="chevron">⌄</span>
       </button>
       <div class="item-body">
-      <div class="field-grid">
-        <label>Intitulé<input data-field="title" placeholder="Software Engineer"></label>
-        <label>Organisation<input data-field="organization" placeholder="Entreprise"></label>
-        <label>Période<input data-field="period" placeholder="2022 - 2024"></label>
-        <label>Tags<input data-field="tags" placeholder="Python, Data, API"></label>
-      </div>
-      <label>Description
-        <textarea data-field="description" rows="4" placeholder="- Réalisation mesurable&#10;- Stack technique&#10;- Impact métier"></textarea>
-      </label>
-      <button type="button" data-remove>Retirer</button>
+        <div class="field-grid">
+          <label>Intitulé<input data-field="title" placeholder="Software Engineer"></label>
+          <label>Organisation<input data-field="organization" placeholder="Entreprise"></label>
+          <label>Période<input data-field="period" placeholder="2022 - 2024"></label>
+          <label>Tags<input data-field="tags" placeholder="Python, Data, API"></label>
+        </div>
+        <label>Description
+          <textarea data-field="description" rows="4" placeholder="- Réalisation mesurable&#10;- Stack technique&#10;- Impact métier"></textarea>
+        </label>
+        <button type="button" data-remove class="danger">Retirer</button>
       </div>
     </article>
   </template>
@@ -248,17 +259,17 @@
         <span class="chevron">⌄</span>
       </button>
       <div class="item-body">
-      <div class="field-grid">
-        <label>Diplôme / Certification<input data-field="title" placeholder="Master Data Engineering"></label>
-        <label>École / Organisme<input data-field="organization" placeholder="Université / École / Plateforme"></label>
-        <label>Période<input data-field="period" placeholder="2021 - 2023"></label>
-        <label>Tags<input data-field="tags" placeholder="Data, Cloud, IA"></label>
-      </div>
+        <div class="field-grid">
+          <label>Diplôme / Certification<input data-field="title" placeholder="Master Data Engineering"></label>
+          <label>École / Organisme<input data-field="organization" placeholder="Université / École / Plateforme"></label>
+          <label>Période<input data-field="period" placeholder="2021 - 2023"></label>
+          <label>Tags<input data-field="tags" placeholder="Data, Cloud, IA"></label>
+        </div>
         <label>Détails
           <textarea data-field="description" rows="3" placeholder="- Spécialisation&#10;- Projet majeur&#10;- Mention ou certification"></textarea>
         </label>
         <label class="toggle"><input type="checkbox" data-field="include" checked> Inclure dans le CV</label>
-      <button type="button" data-remove>Retirer</button>
+        <button type="button" data-remove class="danger">Retirer</button>
       </div>
     </article>
   </template>
@@ -275,19 +286,32 @@
         <span class="chevron">⌄</span>
       </button>
       <div class="item-body">
-      <div class="field-grid">
-        <label>Catégorie<input data-field="name" placeholder="Backend / APIs"></label>
-        <label class="toggle"><input type="checkbox" data-field="include" checked> Inclure dans le CV</label>
-      </div>
-      <label>Compétences
-        <textarea data-field="skills" rows="3" placeholder="FastAPI, Flask, API REST, Spring Boot"></textarea>
-      </label>
-      <button type="button" data-remove>Retirer</button>
+        <div class="field-grid">
+          <label>Catégorie<input data-field="name" placeholder="Backend / APIs"></label>
+          <label class="toggle"><input type="checkbox" data-field="include" checked> Inclure dans le CV</label>
+        </div>
+        <label>Compétences
+          <textarea data-field="skills" rows="3" placeholder="FastAPI, Flask, API REST, Spring Boot"></textarea>
+        </label>
+        <button type="button" data-remove class="danger">Retirer</button>
       </div>
     </article>
   </template>
 
+  <!-- Modal dialog (remplace window.prompt / window.confirm) -->
+  <div id="modalOverlay" class="modal-overlay is-hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <h3 id="modalTitle" class="modal-title"></h3>
+      <p id="modalDesc" class="modal-desc"></p>
+      <input id="modalInput" type="text" class="modal-input">
+      <div class="modal-footer">
+        <button id="modalCancel" type="button">Annuler</button>
+        <button id="modalOk" class="primary" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/static/app.js?v=20260427-2"></script>
+  <script src="/static/app.js?v=20260511"></script>
 </body>
 </html>

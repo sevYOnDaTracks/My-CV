@@ -24,6 +24,16 @@ const educationTemplate = document.querySelector("#educationTemplate");
 const skillGroupTemplate = document.querySelector("#skillGroupTemplate");
 const cvFont = document.querySelector("#cvFont");
 const cvTheme = document.querySelector("#cvTheme");
+const scoreBadge = document.querySelector("#scoreBadge");
+
+// Modal elements
+const modalOverlay = document.querySelector("#modalOverlay");
+const modalTitleEl = document.querySelector("#modalTitle");
+const modalDescEl = document.querySelector("#modalDesc");
+const modalInput = document.querySelector("#modalInput");
+const modalOk = document.querySelector("#modalOk");
+const modalCancel = document.querySelector("#modalCancel");
+
 const STORAGE_KEY = "generator_cv_draft_v1";
 const DRAFT_ID = "default";
 const AUTO_GENERATE_DELAY = 700;
@@ -41,6 +51,7 @@ let currentSelectedProfileId = "";
 let currentApplicationOffer = "";
 let currentMatchScore = 0;
 let pendingDatabaseDraft = null;
+let modalResolve = null;
 
 const groups = {
   skillGroups: document.querySelector("#skillGroups"),
@@ -55,6 +66,118 @@ const modeLabels = {
   dev: "Dev",
   hybrid: "Hybride",
 };
+
+// ── Modal system ──────────────────────────────────────────────────────────────
+
+function showPrompt(title, placeholder = "", defaultValue = "") {
+  return new Promise((resolve) => {
+    modalResolve = resolve;
+    modalTitleEl.textContent = title;
+    modalDescEl.textContent = "";
+    modalDescEl.style.display = "none";
+    modalInput.style.display = "block";
+    modalInput.placeholder = placeholder;
+    modalInput.value = defaultValue;
+    modalOk.textContent = "Créer";
+    modalOk.className = "primary";
+    modalOverlay.classList.remove("is-hidden");
+    requestAnimationFrame(() => {
+      modalInput.focus();
+      modalInput.select();
+    });
+  });
+}
+
+function showConfirm(title, message = "", confirmLabel = "Supprimer") {
+  return new Promise((resolve) => {
+    modalResolve = resolve;
+    modalTitleEl.textContent = title;
+    modalDescEl.textContent = message;
+    modalDescEl.style.display = message ? "block" : "none";
+    modalInput.style.display = "none";
+    modalOk.textContent = confirmLabel;
+    modalOk.className = "danger-btn";
+    modalOverlay.classList.remove("is-hidden");
+    requestAnimationFrame(() => modalOk.focus());
+  });
+}
+
+function closeModal(result) {
+  modalOverlay.classList.add("is-hidden");
+  if (modalResolve) {
+    modalResolve(result);
+    modalResolve = null;
+  }
+}
+
+modalOk.addEventListener("click", () => {
+  if (modalInput.style.display !== "none") {
+    closeModal(modalInput.value.trim() || null);
+  } else {
+    closeModal(true);
+  }
+});
+
+modalCancel.addEventListener("click", () => closeModal(null));
+
+modalOverlay.addEventListener("click", (event) => {
+  if (event.target === modalOverlay) closeModal(null);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!modalOverlay.classList.contains("is-hidden")) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeModal(null);
+    }
+    if (event.key === "Enter" && modalInput.style.display !== "none") {
+      event.preventDefault();
+      closeModal(modalInput.value.trim() || null);
+    }
+    return;
+  }
+
+  // Ctrl/Cmd+S to save in editor
+  if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+    if (!editorView.classList.contains("is-hidden")) {
+      event.preventDefault();
+      saveDraft("Profil sauvegardé");
+      if (currentCvDraftId) saveCurrentCvDraft();
+      else if (currentProfileId) saveCurrentProfile();
+      showToast("Enregistré");
+    }
+  }
+});
+
+// ── Loading state ─────────────────────────────────────────────────────────────
+
+function setLoading(button, loading, darkSpinner = false) {
+  if (loading) {
+    button.classList.add("btn-loading");
+    if (darkSpinner) button.classList.add("btn-load-dark");
+    button.disabled = true;
+  } else {
+    button.classList.remove("btn-loading", "btn-load-dark");
+    button.disabled = false;
+  }
+}
+
+// ── Score badge ───────────────────────────────────────────────────────────────
+
+function updateScoreBadge(score) {
+  if (score === null || score === undefined) {
+    scoreBadge.classList.add("is-hidden");
+    return;
+  }
+  scoreBadge.textContent = `Match ${score}%`;
+  scoreBadge.className = "score-badge";
+  if (score >= 70) scoreBadge.classList.add("score-high");
+  else if (score >= 40) scoreBadge.classList.add("score-mid");
+  else scoreBadge.classList.add("score-low");
+  scoreBadge.classList.remove("is-hidden");
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
 
 function showHome() {
   editorView.classList.add("is-hidden");
@@ -87,6 +210,8 @@ function showEditor() {
   editorView.classList.remove("is-hidden");
   document.body.classList.add("editor-open");
 }
+
+// ── Draft helpers ─────────────────────────────────────────────────────────────
 
 function makeBlankDraft(mode = "hybrid", name = "") {
   return {
@@ -173,6 +298,8 @@ function migrateLegacySkills(skills) {
     .filter(([, values]) => values.length)
     .map(([name, values]) => ({ name, skills: values.join(", "), include: true }));
 }
+
+// ── Item management ───────────────────────────────────────────────────────────
 
 function addItem(groupName, data = {}) {
   const sourceTemplate = groupName === "educationItems"
@@ -306,6 +433,8 @@ function readDraft() {
   };
 }
 
+// ── Save & restore ────────────────────────────────────────────────────────────
+
 function saveDraft(message = "Brouillon sauvegardé") {
   const draft = readDraft();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -321,7 +450,7 @@ function showToast(message) {
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => {
     toast.classList.remove("is-visible");
-  }, 2200);
+  }, 2400);
 }
 
 function scheduleDatabaseSave(draft) {
@@ -512,6 +641,8 @@ async function restoreDatabaseDraft() {
   }
 }
 
+// ── Profiles ──────────────────────────────────────────────────────────────────
+
 async function loadProfiles() {
   try {
     const response = await fetch("/api/profiles");
@@ -549,18 +680,25 @@ function renderProfiles(profiles) {
     return;
   }
 
-  profileGrid.innerHTML = profiles.map((profile) => `
-    <article class="profile-card">
-      <div>
-        <h3>${escapeHtml(profile.name)}</h3>
-        <p>${escapeHtml(modeLabels[profile.mode] || profile.mode)} · ${formatDate(profile.updated_at)}</p>
-      </div>
-      <div class="profile-card-actions">
-        <button type="button" data-open-profile="${profile.id}">Ouvrir</button>
-        <button class="danger" type="button" data-delete-profile="${profile.id}">Supprimer</button>
-      </div>
-    </article>
-  `).join("");
+  profileGrid.innerHTML = profiles.map((profile) => {
+    const modeCls = `mode-${escapeHtml(profile.mode || "auto")}`;
+    const modeLabel = modeLabels[profile.mode] || profile.mode;
+    return `
+      <article class="profile-card">
+        <div>
+          <h3>${escapeHtml(profile.name)}</h3>
+          <p>
+            <span class="mode-badge ${modeCls}">${escapeHtml(modeLabel)}</span>
+            &nbsp;· ${formatDate(profile.updated_at)}
+          </p>
+        </div>
+        <div class="profile-card-actions">
+          <button type="button" data-open-profile="${profile.id}">Ouvrir</button>
+          <button class="danger" type="button" data-delete-profile="${profile.id}">Supprimer</button>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 function renderCvDrafts(drafts) {
@@ -576,18 +714,26 @@ function renderCvDrafts(drafts) {
     return;
   }
 
-  cvDraftGrid.innerHTML = drafts.map((draft) => `
-    <article class="profile-card">
-      <div>
-        <h3>${escapeHtml(draft.title)}</h3>
-        <p>${escapeHtml(draft.company || "Sans entreprise")} · score ${draft.match_score}% · ${formatDate(draft.updated_at)}</p>
-      </div>
-      <div class="profile-card-actions">
-        <button type="button" data-open-cv-draft="${draft.id}">Ouvrir</button>
-        <button class="danger" type="button" data-delete-cv-draft="${draft.id}">Supprimer</button>
-      </div>
-    </article>
-  `).join("");
+  cvDraftGrid.innerHTML = drafts.map((draft) => {
+    const score = draft.match_score || 0;
+    const scoreCls = score >= 70 ? "score-high" : score >= 40 ? "score-mid" : "score-low";
+    return `
+      <article class="profile-card">
+        <div>
+          <h3>${escapeHtml(draft.title)}</h3>
+          <p>
+            ${escapeHtml(draft.company || "Sans entreprise")}
+            &nbsp;·&nbsp;<span class="score-badge ${scoreCls}">Match ${score}%</span>
+            &nbsp;· ${formatDate(draft.updated_at)}
+          </p>
+        </div>
+        <div class="profile-card-actions">
+          <button type="button" data-open-cv-draft="${draft.id}">Ouvrir</button>
+          <button class="danger" type="button" data-delete-cv-draft="${draft.id}">Supprimer</button>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 function escapeHtml(value) {
@@ -603,20 +749,27 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR");
 }
 
+// ── Profile actions ───────────────────────────────────────────────────────────
+
 async function createProfile(mode = "hybrid", suggestedName = "") {
-  const name = window.prompt("Nom du profil", suggestedName || `Profil ${modeLabels[mode] || "Hybride"}`);
+  const defaultName = suggestedName || `Profil ${modeLabels[mode] || "Hybride"}`;
+  const name = await showPrompt("Nom du profil", defaultName, defaultName);
   if (!name) return;
 
-  const draft = makeBlankDraft(mode, name);
-  const response = await fetch("/api/profiles", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, mode, payload: draft }),
-  });
+  try {
+    const draft = makeBlankDraft(mode, name);
+    const response = await fetch("/api/profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, mode, payload: draft }),
+    });
 
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const profile = await response.json();
-  await openProfile(profile.id);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const profile = await response.json();
+    await openProfile(profile.id);
+  } catch (error) {
+    showToast(`Erreur : ${error.message}`);
+  }
 }
 
 async function openProfile(profileId) {
@@ -634,6 +787,7 @@ async function openProfile(profileId) {
   currentSelectedProfileId = "";
   currentApplicationOffer = "";
   currentMatchScore = 0;
+  updateScoreBadge(null);
   activeProfileName.textContent = data.profile.name;
   if (!applyDraft(data.profile.payload)) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data.profile.payload));
@@ -648,26 +802,36 @@ async function analyzeApplicationOffer() {
     return;
   }
 
+  const btn = document.querySelector("#analyzeOffer");
+  setLoading(btn, true);
   applicationStatus.textContent = "Analyse des profils en cours...";
-  const response = await fetch("/api/cv-drafts/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: applicationTitle.value.trim(),
-      company: applicationCompany.value.trim(),
-      job_offer: jobOffer,
-    }),
-  });
 
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const result = await response.json();
-  if (result.error) {
-    applicationStatus.textContent = result.error;
-    return;
+  try {
+    const response = await fetch("/api/cv-drafts/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: applicationTitle.value.trim(),
+        company: applicationCompany.value.trim(),
+        job_offer: jobOffer,
+      }),
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+
+    if (result.error) {
+      applicationStatus.textContent = result.error;
+      return;
+    }
+
+    applicationStatus.textContent = `Profil choisi : ${result.selected_profile.name}`;
+    await openCvDraft(result.draft.id);
+  } catch (error) {
+    applicationStatus.textContent = `Erreur : ${error.message}`;
+  } finally {
+    setLoading(btn, false);
   }
-
-  applicationStatus.textContent = `Profil choisi : ${result.selected_profile.name}`;
-  await openCvDraft(result.draft.id);
 }
 
 async function openCvDraft(draftId) {
@@ -685,6 +849,7 @@ async function openCvDraft(draftId) {
   currentSelectedProfileId = data.draft.selected_profile_id;
   currentApplicationOffer = data.draft.job_offer;
   currentMatchScore = data.draft.match_score;
+  updateScoreBadge(data.draft.match_score);
   activeProfileName.textContent = data.draft.title;
   if (!applyDraft(data.draft.payload)) return;
   preview.innerHTML = data.draft.generated_html || preview.innerHTML;
@@ -695,7 +860,11 @@ async function openCvDraft(draftId) {
 }
 
 async function deleteCvDraft(draftId) {
-  if (!window.confirm("Supprimer ce brouillon CV ?")) return;
+  const confirmed = await showConfirm(
+    "Supprimer ce brouillon CV ?",
+    "Cette action est irréversible. Le brouillon sera définitivement supprimé."
+  );
+  if (!confirmed) return;
 
   await fetch(`/api/cv-drafts/${draftId}`, { method: "DELETE" });
   if (draftId === currentCvDraftId) {
@@ -703,10 +872,15 @@ async function deleteCvDraft(draftId) {
     currentCvDraftTitle = "";
   }
   await loadCvDrafts();
+  showToast("Brouillon supprimé");
 }
 
 async function deleteProfile(profileId) {
-  if (!window.confirm("Supprimer ce profil ?")) return;
+  const confirmed = await showConfirm(
+    "Supprimer ce profil ?",
+    "Cette action est irréversible. Le profil et toutes ses données seront définitivement supprimés."
+  );
+  if (!confirmed) return;
 
   await fetch(`/api/profiles/${profileId}`, { method: "DELETE" });
   if (profileId === currentProfileId) {
@@ -714,6 +888,7 @@ async function deleteProfile(profileId) {
     currentProfileLabel = "";
   }
   await loadProfiles();
+  showToast("Profil supprimé");
 }
 
 function resetDraft() {
@@ -732,14 +907,20 @@ function resetDraft() {
   cvTheme.value = "theme-slate";
   applyCvFont();
   applyCvTheme();
+  updateScoreBadge(null);
   preview.innerHTML = `
     <section class="empty-state">
+      <div class="empty-icon" aria-hidden="true">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+      </div>
       <h1>Ton CV ciblé apparaîtra ici</h1>
       <p>Remplis ta palette, colle une offre, puis génère une version adaptée.</p>
     </section>
   `;
   statusEl.textContent = "Brouillon réinitialisé";
 }
+
+// ── CV font & theme ───────────────────────────────────────────────────────────
 
 function applyCvFont() {
   preview.style.setProperty("--cv-font", cvFont.value);
@@ -751,6 +932,8 @@ function applyCvTheme() {
     page.classList.add(cvTheme.value);
   });
 }
+
+// ── Generation ────────────────────────────────────────────────────────────────
 
 function scheduleAutoGenerate() {
   clearTimeout(autoGenerateTimer);
@@ -785,11 +968,18 @@ async function generateCv(event, options = {}) {
     applyCvFont();
     applyCvTheme();
     currentMatchScore = result.match_score;
-    keywordsEl.innerHTML = result.keywords.map((word) => `<span>${word}</span>`).join("");
+    updateScoreBadge(result.match_score);
+
+    keywordsEl.innerHTML = result.keywords.map((word, index) => {
+      const isHot = index < 6;
+      return `<span class="${isHot ? "kw-hot" : ""}">${word}</span>`;
+    }).join("");
+
     statusEl.textContent = result.used_ollama
-      ? `Généré avec Ollama - score ${result.match_score}%`
-      : `Généré localement - score ${result.match_score}%`;
+      ? `Généré avec Ollama`
+      : `Généré localement`;
     if (result.note) statusEl.textContent += ` (${result.note})`;
+
     if (currentCvDraftId) await saveCurrentCvDraft(readDraft());
   } catch (error) {
     if (currentGeneration !== generationId) return;
@@ -859,6 +1049,8 @@ function loadSample() {
   scheduleAutoGenerate();
 }
 
+// ── Event listeners ───────────────────────────────────────────────────────────
+
 document.addEventListener("click", (event) => {
   const addButton = event.target.closest("[data-add]");
   if (!addButton) return;
@@ -873,16 +1065,30 @@ document.querySelector("#createProfile").addEventListener("click", () => createP
 document.querySelector("#analyzeOffer").addEventListener("click", () => {
   analyzeApplicationOffer().catch((error) => {
     applicationStatus.textContent = `Erreur : ${error.message}`;
+    setLoading(document.querySelector("#analyzeOffer"), false);
   });
 });
 document.querySelector("#backHome").addEventListener("click", showHome);
 document.querySelector("#saveDraft").addEventListener("click", async () => {
-  saveDraft("Profil sauvegardé");
-  await saveCurrentProfile();
-  if (currentCvDraftId) await saveCurrentCvDraft();
-  showToast("Enregistré avec succès");
+  const btn = document.querySelector("#saveDraft");
+  setLoading(btn, true);
+  try {
+    saveDraft("Profil sauvegardé");
+    if (currentProfileId) await saveCurrentProfile();
+    if (currentCvDraftId) await saveCurrentCvDraft();
+    showToast("Enregistré");
+  } finally {
+    setLoading(btn, false);
+  }
 });
-document.querySelector("#resetDraft").addEventListener("click", resetDraft);
+document.querySelector("#resetDraft").addEventListener("click", async () => {
+  const confirmed = await showConfirm(
+    "Réinitialiser le formulaire ?",
+    "Toutes les données saisies seront effacées. Le profil en base de données reste intact.",
+    "Réinitialiser"
+  );
+  if (confirmed) resetDraft();
+});
 document.querySelector("#printCv").addEventListener("click", () => window.print());
 cvFont.addEventListener("change", () => {
   applyCvFont();
@@ -895,6 +1101,7 @@ cvTheme.addEventListener("change", () => {
 document.querySelector("#copyHtml").addEventListener("click", async () => {
   await navigator.clipboard.writeText(preview.innerHTML);
   statusEl.textContent = "HTML copié";
+  showToast("HTML copié dans le presse-papiers");
 });
 
 document.querySelectorAll("[data-create-mode]").forEach((button) => {
@@ -913,16 +1120,24 @@ profileGrid.addEventListener("click", async (event) => {
   const openButton = event.target.closest("[data-open-profile]");
   const deleteButton = event.target.closest("[data-delete-profile]");
 
-  if (openButton) await openProfile(openButton.dataset.openProfile);
-  if (deleteButton) await deleteProfile(deleteButton.dataset.deleteProfile);
+  if (openButton) {
+    await openProfile(openButton.dataset.openProfile).catch((err) => showToast(`Erreur : ${err.message}`));
+  }
+  if (deleteButton) {
+    await deleteProfile(deleteButton.dataset.deleteProfile).catch((err) => showToast(`Erreur : ${err.message}`));
+  }
 });
 
 cvDraftGrid.addEventListener("click", async (event) => {
   const openButton = event.target.closest("[data-open-cv-draft]");
   const deleteButton = event.target.closest("[data-delete-cv-draft]");
 
-  if (openButton) await openCvDraft(openButton.dataset.openCvDraft);
-  if (deleteButton) await deleteCvDraft(deleteButton.dataset.deleteCvDraft);
+  if (openButton) {
+    await openCvDraft(openButton.dataset.openCvDraft).catch((err) => showToast(`Erreur : ${err.message}`));
+  }
+  if (deleteButton) {
+    await deleteCvDraft(deleteButton.dataset.deleteCvDraft).catch((err) => showToast(`Erreur : ${err.message}`));
+  }
 });
 
 form.addEventListener("submit", (event) => generateCv(event));
@@ -941,8 +1156,7 @@ applyCvFont();
 applyCvTheme();
 
 async function initializeApp() {
-  await loadProfiles();
-  await loadCvDrafts();
+  await Promise.all([loadProfiles(), loadCvDrafts()]);
   defaultSkillGroups("hybrid").forEach((item) => addItem("skillGroups", item));
   addItem("experiences");
   addItem("educationItems");

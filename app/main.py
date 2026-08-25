@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import webbrowser
 from collections import Counter
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
+from threading import Timer
 from uuid import uuid4
 from urllib.error import URLError
 from urllib.request import Request, urlopen
@@ -875,3 +877,15 @@ def generate_cv(payload: GenerateRequest) -> GenerateResponse:
         used_ollama=used_ollama,
         note=note,
     )
+
+
+def run_local_app() -> None:
+    import uvicorn
+
+    url = "http://127.0.0.1:8000"
+    Timer(1.0, lambda: webbrowser.open(url)).start()
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+
+
+if __name__ == "__main__":
+    run_local_app()
