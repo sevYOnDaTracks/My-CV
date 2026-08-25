@@ -848,9 +848,18 @@ textarea:focus {
 
 /* ── Print ───────────────────────────────────────── */
 
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
 @media print {
+  html,
   body {
+    width: 210mm;
     background: white;
+    margin: 0;
+    padding: 0;
   }
 
   .input-panel,
@@ -870,12 +879,21 @@ textarea:focus {
   }
 
   .cv-page {
-    width: auto;
-    min-height: auto;
+    box-sizing: border-box;
+    width: 210mm;
+    min-height: 297mm;
     margin: 0;
-    padding: 0;
+    padding: 12mm 14mm;
     border: 0;
     box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .cv-item,
+  .skill-group {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 
