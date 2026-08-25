@@ -725,7 +725,7 @@ def score_text(text: str, keywords: list[str]) -> int:
     return sum(1 for keyword in keywords if keyword.lower() in searchable)
 
 
-def rank_items(items: list[ProfileItem], keywords: list[str], max_items: int) -> list[ProfileItem]:
+def rank_items(items: list[ProfileItem], keywords: list[str]) -> list[ProfileItem]:
     ranked = sorted(
         items,
         key=lambda item: score_text(
@@ -734,7 +734,7 @@ def rank_items(items: list[ProfileItem], keywords: list[str], max_items: int) ->
         ),
         reverse=True,
     )
-    return [item for item in ranked[:max_items] if item.title or item.description]
+    return [item for item in ranked if item.include and (item.title or item.description)]
 
 
 def split_lines(value: str) -> list[str]:
@@ -853,7 +853,7 @@ def build_manual_skill_groups(profile: Profile, keywords: list[str]) -> dict[str
 def build_cv_html(profile: Profile, job_offer: str, keywords: list[str], profile_mode: str) -> str:
     mode = resolve_mode(profile_mode, keywords)
     title = infer_title(profile, keywords, mode)
-    experiences = rank_items(profile.experiences, keywords, 4)
+    experiences = rank_items(profile.experiences, keywords)
 
     summary = profile.summary.strip()
     if not summary:
@@ -866,7 +866,7 @@ def build_cv_html(profile: Profile, job_offer: str, keywords: list[str], profile
 
     def render_item(item: ProfileItem) -> str:
         bullets = split_lines(item.description)
-        bullet_html = "".join(f"<li>{escape(bullet)}</li>" for bullet in bullets[:5])
+        bullet_html = "".join(f"<li>{escape(bullet)}</li>" for bullet in bullets)
         meta = " · ".join(part for part in [item.organization, item.period] if part)
         return (
             "<article class='cv-item'>"

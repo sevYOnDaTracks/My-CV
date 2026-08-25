@@ -888,6 +888,10 @@ textarea:focus {
   gap: 16px;
 }
 
+.cv-item + .cv-item {
+  margin-top: 16px;
+}
+
 .item-meta {
   color: var(--cv-muted);
   flex: 0 1 45%;
@@ -899,6 +903,10 @@ textarea:focus {
 .cv-page ul {
   margin: 6px 0 0;
   padding-left: 18px;
+}
+
+.cv-page li + li {
+  margin-top: 3px;
 }
 
 .skill-list {
