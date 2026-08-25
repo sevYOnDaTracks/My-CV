@@ -1151,3 +1151,34 @@ textarea:focus {
     box-shadow: none;
   }
 }
+
+/* CV Studio dashboard */
+.saas-header { padding: 34px 38px; }
+.eyebrow { display:block; margin-bottom:8px; color:var(--accent); font-size:12px; font-weight:900; letter-spacing:.16em; }
+.dashboard-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.dashboard-stats article { display:flex; flex-direction:column; gap:4px; padding:20px 24px; border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:var(--shadow-soft); }
+.dashboard-stats strong { font-size:30px; color:var(--ink); }
+.dashboard-stats span { color:var(--muted); font-size:13px; }
+.dashboard-actions { display:flex; gap:12px; align-items:center; }
+.hero-action { padding:13px 20px; font-size:15px; }
+.library-section { display:grid; gap:14px; padding:22px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.72); }
+.library-section h2 { margin:0 0 4px; }
+.library-section select { width:auto; min-width:130px; }
+.resume-card,.template-card { min-height:150px; }
+.status-pill { display:inline-flex; margin:0 0 10px 4px; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.status-pill.draft { color:#92400e; background:#fef3c7; }
+.status-pill.final { color:#166534; background:#dcfce7; }
+.template-swatch { display:block; width:44px; height:7px; margin:0 0 14px 4px; border-radius:99px; background:#334155; }
+.template-swatch.theme-navy { background:#1e3a5f; }.template-swatch.theme-teal { background:#0f766e; }.template-swatch.theme-burgundy { background:#7f1d3a; }
+.empty-library { grid-column:1/-1; padding:38px; border:1px dashed var(--line); border-radius:14px; text-align:center; color:var(--muted); }
+.empty-library h3 { margin:0 0 6px; color:var(--ink); }
+.editor-meta { display:grid; gap:5px; padding:16px 22px; border-bottom:1px solid var(--line); background:#f8fafc; }
+.editor-meta label { font-size:12px; }.editor-meta input { margin-top:5px; font-size:16px; font-weight:800; }
+.form-section { display:grid; gap:12px; }
+.optional-targeting { border:1px solid var(--line); border-radius:12px; padding:14px; }
+.optional-targeting summary { cursor:pointer; font-weight:800; }.optional-targeting label { margin-top:14px; }
+.account-box { display:grid; gap:16px; width:min(620px,calc(100vw - 36px)); }
+.account-box h2 { margin:0; }
+.toolbar .primary { color:#fff; }
+.toolbar-actions .is-final { color:#166534; border-color:#86efac; background:#dcfce7; }
+@media(max-width:760px){.dashboard-stats{grid-template-columns:1fr}.dashboard-actions{align-items:stretch;flex-direction:column}.dashboard-actions button{width:100%}.library-section{padding:16px}}

@@ -102,6 +102,31 @@ class CvDraftPayload(BaseModel):
     match_score: int = 0
 
 
+class AccountPayload(BaseModel):
+    first_name: str = ""
+    last_name: str = ""
+    email: str = ""
+    phone: str = ""
+    address: str = ""
+    location: str = ""
+    links: str = ""
+
+
+class ResumePayload(BaseModel):
+    title: str = "CV sans titre"
+    status: str = "draft"
+    template_id: str = ""
+    payload: dict = Field(default_factory=dict)
+    generated_html: str = ""
+
+
+class TemplatePayload(BaseModel):
+    name: str = "Modèle sans nom"
+    description: str = ""
+    payload: dict = Field(default_factory=dict)
+    generated_html: str = ""
+
+
 def init_database() -> None:
     DATA_DIR.mkdir(exist_ok=True)
     with sqlite3.connect(DATABASE_PATH) as connection:
@@ -110,6 +135,45 @@ def init_database() -> None:
             CREATE TABLE IF NOT EXISTS drafts (
                 id TEXT PRIMARY KEY,
                 payload TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS account (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                payload TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS resumes (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                status TEXT NOT NULL,
+                template_id TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                generated_html TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS resume_templates (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                generated_html TEXT NOT NULL,
+                created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
             """
@@ -141,6 +205,18 @@ def init_database() -> None:
                 updated_at TEXT NOT NULL
             )
             """
+        )
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO resumes
+                (id, title, status, template_id, payload, generated_html, created_at, updated_at)
+            SELECT id, title, 'draft', '', payload, generated_html, created_at, updated_at
+            FROM cv_drafts
+            WHERE NOT EXISTS (SELECT 1 FROM app_meta WHERE key = 'legacy_cv_migrated')
+            """
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO app_meta (key, value) VALUES ('legacy_cv_migrated', '1')"
         )
 
 
@@ -446,6 +522,124 @@ def analyze_offer_payload(payload: JobOfferPayload) -> dict:
     }
 
 
+def get_account_payload() -> dict | None:
+    init_database()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        row = connection.execute("SELECT payload, updated_at FROM account WHERE id = 1").fetchone()
+    if not row:
+        return None
+    return {"payload": json.loads(row[0]), "updated_at": row[1]}
+
+
+def save_account_payload(account: AccountPayload) -> dict:
+    init_database()
+    now = datetime.now(timezone.utc).isoformat()
+    payload = account.model_dump()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        connection.execute(
+            """
+            INSERT INTO account (id, payload, updated_at) VALUES (1, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at
+            """,
+            (json.dumps(payload, ensure_ascii=False), now),
+        )
+    return {"payload": payload, "updated_at": now}
+
+
+def list_resumes_payloads() -> list[dict]:
+    init_database()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        rows = connection.execute(
+            "SELECT id, title, status, template_id, updated_at FROM resumes ORDER BY updated_at DESC"
+        ).fetchall()
+    return [
+        {"id": row[0], "title": row[1], "status": row[2], "template_id": row[3], "updated_at": row[4]}
+        for row in rows
+    ]
+
+
+def load_resume_payload(resume_id: str) -> dict | None:
+    init_database()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        row = connection.execute(
+            "SELECT id, title, status, template_id, payload, generated_html, updated_at FROM resumes WHERE id = ?",
+            (resume_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {"id": row[0], "title": row[1], "status": row[2], "template_id": row[3],
+            "payload": json.loads(row[4]), "generated_html": row[5], "updated_at": row[6]}
+
+
+def save_resume_payload(resume: ResumePayload, resume_id: str | None = None) -> dict:
+    init_database()
+    now = datetime.now(timezone.utc).isoformat()
+    resume_id = resume_id or uuid4().hex
+    status = resume.status if resume.status in {"draft", "final"} else "draft"
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        connection.execute(
+            """
+            INSERT INTO resumes (id, title, status, template_id, payload, generated_html, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET title = excluded.title, status = excluded.status,
+                template_id = excluded.template_id, payload = excluded.payload,
+                generated_html = excluded.generated_html, updated_at = excluded.updated_at
+            """,
+            (resume_id, resume.title.strip() or "CV sans titre", status, resume.template_id,
+             json.dumps(resume.payload, ensure_ascii=False), resume.generated_html, now, now),
+        )
+    return load_resume_payload(resume_id) or {"id": resume_id}
+
+
+def delete_resume_payload(resume_id: str) -> None:
+    init_database()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        connection.execute("DELETE FROM resumes WHERE id = ?", (resume_id,))
+
+
+def list_templates_payloads() -> list[dict]:
+    init_database()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        rows = connection.execute(
+            "SELECT id, name, description, updated_at FROM resume_templates ORDER BY updated_at DESC"
+        ).fetchall()
+    return [{"id": row[0], "name": row[1], "description": row[2], "updated_at": row[3]} for row in rows]
+
+
+def load_template_payload(template_id: str) -> dict | None:
+    init_database()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        row = connection.execute(
+            "SELECT id, name, description, payload, generated_html, updated_at FROM resume_templates WHERE id = ?",
+            (template_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {"id": row[0], "name": row[1], "description": row[2], "payload": json.loads(row[3]),
+            "generated_html": row[4], "updated_at": row[5]}
+
+
+def save_template_payload(template: TemplatePayload) -> dict:
+    init_database()
+    template_id = uuid4().hex
+    now = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        connection.execute(
+            """INSERT INTO resume_templates
+               (id, name, description, payload, generated_html, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (template_id, template.name.strip() or "Modèle sans nom", template.description,
+             json.dumps(template.payload, ensure_ascii=False), template.generated_html, now, now),
+        )
+    return load_template_payload(template_id) or {"id": template_id}
+
+
+def delete_template_payload(template_id: str) -> None:
+    init_database()
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        connection.execute("DELETE FROM resume_templates WHERE id = ?", (template_id,))
+
+
 init_database()
 
 
@@ -609,7 +803,7 @@ def infer_title(profile: Profile, keywords: list[str], mode: str) -> str:
         return "Full Stack / AI Engineer"
     if any(word in text for word in ["pandas", "tableau", "powerbi", "analyse"]):
         return "Data Analyst / Data Scientist"
-    return profile.target_title or "Software Engineer"
+    return "Titre professionnel"
 
 
 def order_skill_groups(skill_groups: dict[str, list[str]], mode: str) -> dict[str, list[str]]:
@@ -662,10 +856,7 @@ def build_cv_html(profile: Profile, job_offer: str, keywords: list[str], profile
 
     summary = profile.summary.strip()
     if not summary:
-        summary = (
-            f"Profil {title} orienté conception, livraison et amélioration de solutions "
-            "techniques adaptées aux enjeux produit, data et IA."
-        )
+        summary = "Ajoutez une présentation professionnelle concise et orientée résultats."
 
     contacts = " | ".join(
         part for part in [profile.location, profile.email, profile.phone, profile.links] if part
@@ -723,12 +914,12 @@ def build_cv_html(profile: Profile, job_offer: str, keywords: list[str], profile
 
   <section>
     <h2>Expérience professionnelle</h2>
-    {experience_html or "<p>Ajoutez vos expériences dans la palette de profil.</p>"}
+    {experience_html or "<p>Ajoutez vos expériences professionnelles.</p>"}
   </section>
 
   <section>
     <h2>Formation</h2>
-    {education_html or "<p>Ajoutez vos formations dans la palette de profil.</p>"}
+    {education_html or "<p>Ajoutez vos formations.</p>"}
   </section>
 
   <section>
@@ -854,6 +1045,63 @@ def update_cv_draft(draft_id: str, draft: CvDraftPayload) -> dict:
 @app.delete("/api/cv-drafts/{draft_id}")
 def delete_cv_draft(draft_id: str) -> dict:
     delete_cv_draft_payload(draft_id)
+    return {"deleted": True}
+
+
+@app.get("/api/account")
+def get_account() -> dict:
+    return {"account": get_account_payload()}
+
+
+@app.put("/api/account")
+def save_account(account: AccountPayload) -> dict:
+    return {"account": save_account_payload(account)}
+
+
+@app.get("/api/resumes")
+def list_resumes() -> dict:
+    return {"resumes": list_resumes_payloads()}
+
+
+@app.post("/api/resumes")
+def create_resume(resume: ResumePayload) -> dict:
+    return {"resume": save_resume_payload(resume)}
+
+
+@app.get("/api/resumes/{resume_id}")
+def get_resume(resume_id: str) -> dict:
+    return {"resume": load_resume_payload(resume_id)}
+
+
+@app.put("/api/resumes/{resume_id}")
+def update_resume(resume_id: str, resume: ResumePayload) -> dict:
+    return {"resume": save_resume_payload(resume, resume_id)}
+
+
+@app.delete("/api/resumes/{resume_id}")
+def delete_resume(resume_id: str) -> dict:
+    delete_resume_payload(resume_id)
+    return {"deleted": True}
+
+
+@app.get("/api/templates")
+def list_templates() -> dict:
+    return {"templates": list_templates_payloads()}
+
+
+@app.post("/api/templates")
+def create_template(template: TemplatePayload) -> dict:
+    return {"template": save_template_payload(template)}
+
+
+@app.get("/api/templates/{template_id}")
+def get_template(template_id: str) -> dict:
+    return {"template": load_template_payload(template_id)}
+
+
+@app.delete("/api/templates/{template_id}")
+def delete_template(template_id: str) -> dict:
+    delete_template_payload(template_id)
     return {"deleted": True}
 
 

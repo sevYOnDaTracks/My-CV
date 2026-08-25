@@ -1,6 +1,17 @@
-# Générator CV
+# CV Studio
 
-Application locale pour générer un CV adapté à une offre à partir d'une palette complète de profil.
+Application locale de création et de gestion de CV avec aperçu A4 en temps réel.
+
+## Fonctionnalités
+
+- Un compte local pour conserver les coordonnées réutilisées sur chaque CV
+- Plusieurs CV indépendants, enregistrés comme brouillons ou versions finalisées
+- Modèles de départ et modèles personnels créés depuis un CV
+- Aperçu A4 instantané pendant la saisie
+- Choix du thème et de la police
+- Adaptation facultative du contenu à une offre d'emploi
+- Export PDF par l'impression du navigateur et export HTML autonome
+- Sauvegarde automatique dans SQLite
 
 ## Lancer l'application
 
@@ -45,39 +56,16 @@ Le modèle par défaut est configurable dans `app/main.py`.
 
 ## Sauvegarde locale
 
-L'application sauvegarde le brouillon à deux endroits :
+Le compte, les CV, leur statut et les modèles personnels sont sauvegardés dans
+`data/generator_cv.db`. Une sauvegarde automatique est déclenchée pendant l'édition
+d'un CV déjà enregistré. Le raccourci `Ctrl+S` permet aussi de forcer l'enregistrement.
 
-- `localStorage` du navigateur pour une restauration rapide.
-- SQLite côté backend dans `data/generator_cv.db`.
-
-SQLite contient aussi les profils personnalisés :
-
-- Profil Data
-- Profil IA
-- Profil Dev
-- Profil Hybride
-- Profils libres créés depuis l'accueil
-
-Chaque profil garde sa palette, son mode, son thème, sa police et ses préférences.
-
-L'accueil contient aussi un workflow candidature :
-
-- Coller une offre
-- Créer un brouillon CV à partir du profil le plus adapté
-- Ouvrir/modifier ce brouillon
-- Exporter en PDF
-- Supprimer le brouillon si besoin
-
-Pour l'instant, le choix du profil se fait avec un scoring local. Ollama sera branché ensuite pour analyser l'offre plus finement et proposer une adaptation plus intelligente.
+Au premier lancement de cette version, les anciens brouillons de candidature sont
+automatiquement importés dans « Mes CV ». Les anciennes tables sont conservées.
 
 Le fichier SQLite contient des données personnelles et est ignoré par Git via `.gitignore`.
 
-## Objectif V1
+## Export
 
-- Saisir une palette complète de profil
-- Coller une offre d'emploi
-- Extraire les mots-clés importants
-- Prioriser les expériences, projets et compétences pertinentes
-- Générer un CV ATS simple
-- Modifier le résultat dans l'interface
-- Exporter en PDF via l'impression navigateur
+- **PDF** ouvre la boîte d'impression du navigateur avec uniquement les pages du CV.
+- **HTML** télécharge une version autonome contenant le style et le contenu du CV.

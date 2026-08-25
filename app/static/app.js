@@ -1,1165 +1,183 @@
-const form = document.querySelector("#cvForm");
-const homeView = document.querySelector("#homeView");
-const workflowDashboard = document.querySelector("#workflowDashboard");
-const profileQuickStart = document.querySelector("#profileQuickStart");
-const profilesListSection = document.querySelector("#profilesListSection");
-const applicationPanel = document.querySelector("#applicationPanel");
-const draftListSection = document.querySelector("#draftListSection");
-const editorView = document.querySelector("#editorView");
-const preview = document.querySelector("#cvPreview");
-const statusEl = document.querySelector("#status");
-const toast = document.querySelector("#toast");
-const keywordsEl = document.querySelector("#keywords");
-const profileGrid = document.querySelector("#profileGrid");
-const profileCount = document.querySelector("#profileCount");
-const cvDraftGrid = document.querySelector("#cvDraftGrid");
-const cvDraftCount = document.querySelector("#cvDraftCount");
-const applicationTitle = document.querySelector("#applicationTitle");
-const applicationCompany = document.querySelector("#applicationCompany");
-const applicationOffer = document.querySelector("#applicationOffer");
-const applicationStatus = document.querySelector("#applicationStatus");
-const activeProfileName = document.querySelector("#activeProfileName");
-const template = document.querySelector("#itemTemplate");
-const educationTemplate = document.querySelector("#educationTemplate");
-const skillGroupTemplate = document.querySelector("#skillGroupTemplate");
-const cvFont = document.querySelector("#cvFont");
-const cvTheme = document.querySelector("#cvTheme");
-const scoreBadge = document.querySelector("#scoreBadge");
+const $ = (selector) => document.querySelector(selector);
+const form = $("#cvForm");
+const preview = $("#cvPreview");
+const groups = { skillGroups: $("#skillGroups"), experiences: $("#experiences"), educationItems: $("#educationItems") };
+const templates = { skillGroups: $("#skillGroupTemplate"), experiences: $("#itemTemplate"), educationItems: $("#educationTemplate") };
+let account = null;
+let resumes = [];
+let currentResumeId = null;
+let currentStatus = "draft";
+let currentTemplateId = "";
+let saveTimer = null;
+let generateTimer = null;
+let generation = 0;
 
-// Modal elements
-const modalOverlay = document.querySelector("#modalOverlay");
-const modalTitleEl = document.querySelector("#modalTitle");
-const modalDescEl = document.querySelector("#modalDesc");
-const modalInput = document.querySelector("#modalInput");
-const modalOk = document.querySelector("#modalOk");
-const modalCancel = document.querySelector("#modalCancel");
-
-const STORAGE_KEY = "generator_cv_draft_v1";
-const DRAFT_ID = "default";
-const AUTO_GENERATE_DELAY = 700;
-const DATABASE_SAVE_DELAY = 300;
-
-let autoGenerateTimer;
-let databaseSaveTimer;
-let generationId = 0;
-let currentProfileId = null;
-let currentProfileLabel = "";
-let currentCvDraftId = null;
-let currentCvDraftTitle = "";
-let currentCvDraftCompany = "";
-let currentSelectedProfileId = "";
-let currentApplicationOffer = "";
-let currentMatchScore = 0;
-let pendingDatabaseDraft = null;
-let modalResolve = null;
-
-const groups = {
-  skillGroups: document.querySelector("#skillGroups"),
-  experiences: document.querySelector("#experiences"),
-  educationItems: document.querySelector("#educationItems"),
-};
-
-const modeLabels = {
-  auto: "Auto",
-  data: "Data",
-  ai: "IA",
-  dev: "Dev",
-  hybrid: "Hybride",
-};
-
-// ── Modal system ──────────────────────────────────────────────────────────────
-
-function showPrompt(title, placeholder = "", defaultValue = "") {
-  return new Promise((resolve) => {
-    modalResolve = resolve;
-    modalTitleEl.textContent = title;
-    modalDescEl.textContent = "";
-    modalDescEl.style.display = "none";
-    modalInput.style.display = "block";
-    modalInput.placeholder = placeholder;
-    modalInput.value = defaultValue;
-    modalOk.textContent = "Créer";
-    modalOk.className = "primary";
-    modalOverlay.classList.remove("is-hidden");
-    requestAnimationFrame(() => {
-      modalInput.focus();
-      modalInput.select();
-    });
-  });
+function toast(message) {
+  const node = $("#toast"); node.textContent = message; node.classList.add("is-visible");
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("is-visible"), 2400);
 }
 
-function showConfirm(title, message = "", confirmLabel = "Supprimer") {
-  return new Promise((resolve) => {
-    modalResolve = resolve;
-    modalTitleEl.textContent = title;
-    modalDescEl.textContent = message;
-    modalDescEl.style.display = message ? "block" : "none";
-    modalInput.style.display = "none";
-    modalOk.textContent = confirmLabel;
-    modalOk.className = "danger-btn";
-    modalOverlay.classList.remove("is-hidden");
-    requestAnimationFrame(() => modalOk.focus());
-  });
+async function api(url, options = {}) {
+  const response = await fetch(url, { headers: { "Content-Type": "application/json", ...(options.headers || {}) }, ...options });
+  if (!response.ok) throw new Error(`Erreur ${response.status}`);
+  return response.json();
 }
 
-function closeModal(result) {
-  modalOverlay.classList.add("is-hidden");
-  if (modalResolve) {
-    modalResolve(result);
-    modalResolve = null;
-  }
+function escapeHtml(value = "") {
+  const div = document.createElement("div"); div.textContent = value; return div.innerHTML;
 }
 
-modalOk.addEventListener("click", () => {
-  if (modalInput.style.display !== "none") {
-    closeModal(modalInput.value.trim() || null);
-  } else {
-    closeModal(true);
-  }
-});
+function formatDate(value) { return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }); }
 
-modalCancel.addEventListener("click", () => closeModal(null));
-
-modalOverlay.addEventListener("click", (event) => {
-  if (event.target === modalOverlay) closeModal(null);
-});
-
-document.addEventListener("keydown", (event) => {
-  if (!modalOverlay.classList.contains("is-hidden")) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeModal(null);
-    }
-    if (event.key === "Enter" && modalInput.style.display !== "none") {
-      event.preventDefault();
-      closeModal(modalInput.value.trim() || null);
-    }
-    return;
-  }
-
-  // Ctrl/Cmd+S to save in editor
-  if ((event.ctrlKey || event.metaKey) && event.key === "s") {
-    if (!editorView.classList.contains("is-hidden")) {
-      event.preventDefault();
-      saveDraft("Profil sauvegardé");
-      if (currentCvDraftId) saveCurrentCvDraft();
-      else if (currentProfileId) saveCurrentProfile();
-      showToast("Enregistré");
-    }
-  }
-});
-
-// ── Loading state ─────────────────────────────────────────────────────────────
-
-function setLoading(button, loading, darkSpinner = false) {
-  if (loading) {
-    button.classList.add("btn-loading");
-    if (darkSpinner) button.classList.add("btn-load-dark");
-    button.disabled = true;
-  } else {
-    button.classList.remove("btn-loading", "btn-load-dark");
-    button.disabled = false;
-  }
+function blankPayload() {
+  const fullName = account ? `${account.first_name || ""} ${account.last_name || ""}`.trim() : "";
+  return { profile: { name: fullName, target_title: "", location: account?.location || account?.address || "", email: account?.email || "", phone: account?.phone || "", links: account?.links || "", summary: "", skill_groups: [], experiences: [], education_items: [], languages: "" }, job_offer: "", profile_mode: "auto", use_ollama: false, cv_font: "Arial, Helvetica, sans-serif", cv_theme: "theme-slate" };
 }
 
-// ── Score badge ───────────────────────────────────────────────────────────────
-
-function updateScoreBadge(score) {
-  if (score === null || score === undefined) {
-    scoreBadge.classList.add("is-hidden");
-    return;
-  }
-  scoreBadge.textContent = `Match ${score}%`;
-  scoreBadge.className = "score-badge";
-  if (score >= 70) scoreBadge.classList.add("score-high");
-  else if (score >= 40) scoreBadge.classList.add("score-mid");
-  else scoreBadge.classList.add("score-low");
-  scoreBadge.classList.remove("is-hidden");
+function itemData(node) {
+  const out = {};
+  node.querySelectorAll("[data-field]").forEach((field) => { out[field.dataset.field] = field.type === "checkbox" ? field.checked : field.value; });
+  return out;
 }
 
-// ── Navigation ────────────────────────────────────────────────────────────────
-
-function showHome() {
-  editorView.classList.add("is-hidden");
-  homeView.classList.remove("is-hidden");
-  document.body.classList.remove("editor-open");
-  showHomeDashboard();
+function refreshItem(node) {
+  const data = itemData(node); node.querySelector("[data-item-title]").textContent = data.title || data.name || "Nouvel élément";
+  node.querySelector("[data-item-meta]").textContent = [data.organization, data.period].filter(Boolean).join(" · ");
 }
-
-function showHomeDashboard() {
-  workflowDashboard.classList.remove("is-hidden");
-  profileQuickStart.classList.add("is-hidden");
-  profilesListSection.classList.add("is-hidden");
-  applicationPanel.classList.add("is-hidden");
-  draftListSection.classList.add("is-hidden");
-}
-
-function showWorkflow(workflow) {
-  workflowDashboard.classList.add("is-hidden");
-  profileQuickStart.classList.toggle("is-hidden", workflow !== "profiles");
-  profilesListSection.classList.toggle("is-hidden", workflow !== "profiles");
-  applicationPanel.classList.toggle("is-hidden", workflow !== "applications");
-  draftListSection.classList.toggle("is-hidden", workflow !== "applications");
-
-  if (workflow === "profiles") loadProfiles();
-  if (workflow === "applications") loadCvDrafts();
-}
-
-function showEditor() {
-  homeView.classList.add("is-hidden");
-  editorView.classList.remove("is-hidden");
-  document.body.classList.add("editor-open");
-}
-
-// ── Draft helpers ─────────────────────────────────────────────────────────────
-
-function makeBlankDraft(mode = "hybrid", name = "") {
-  return {
-    profile: {
-      name: "",
-      target_title: modeLabels[mode] ? `Profil ${modeLabels[mode]}` : name,
-      location: "",
-      email: "",
-      phone: "",
-      links: "",
-      summary: "",
-      skills: "",
-      skill_groups: defaultSkillGroups(mode),
-      languages: "",
-      experiences: [],
-      education_items: [],
-    },
-    job_offer: "",
-    profile_mode: mode,
-    cv_font: "Arial, Helvetica, sans-serif",
-    cv_theme: mode === "data" ? "theme-navy" : "theme-slate",
-    use_ollama: false,
-  };
-}
-
-function defaultSkillGroups(mode = "hybrid") {
-  const common = [
-    { name: "Langages", skills: "Python, JavaScript, SQL", include: true },
-    { name: "Cloud / DevOps", skills: "Docker, Git, Linux", include: true },
-  ];
-
-  const presets = {
-    data: [
-      { name: "Data Engineering", skills: "Airflow, Spark, ETL, ELT, dbt", include: true },
-      { name: "Bases de données", skills: "PostgreSQL, MySQL, MongoDB", include: true },
-      { name: "BI / Analyse", skills: "Power BI, Tableau, Excel", include: true },
-    ],
-    ai: [
-      { name: "IA / LLM", skills: "Machine Learning, LLM, RAG, Ollama", include: true },
-      { name: "Data", skills: "Pandas, NumPy, Scikit-learn", include: true },
-      { name: "Backend IA", skills: "FastAPI, API REST", include: true },
-    ],
-    dev: [
-      { name: "Backend", skills: "FastAPI, Flask, API REST, Spring Boot", include: true },
-      { name: "Frontend", skills: "React, Angular, HTML, CSS", include: true },
-      { name: "Bases de données", skills: "PostgreSQL, SQL", include: true },
-    ],
-    hybrid: [
-      { name: "Backend / APIs", skills: "FastAPI, Flask, API REST", include: true },
-      { name: "Frontend", skills: "React, Angular, JavaScript", include: true },
-      { name: "Data / IA", skills: "Pandas, Spark, Airflow, Machine Learning, LLM, RAG", include: true },
-    ],
-  };
-
-  return [...(presets[mode] || presets.hybrid), ...common];
-}
-
-function migrateLegacySkills(skills) {
-  const rawSkills = String(skills || "").split(/[,;\n]/).map((skill) => skill.trim()).filter(Boolean);
-  if (!rawSkills.length) return [];
-
-  const buckets = {
-    "Langages": ["java", "python", "javascript", "typescript", "sql", "html", "css"],
-    "Backend / APIs": ["fastapi", "flask", "django", "spring", "api", "rest", "node"],
-    "Frontend": ["react", "angular", "vue"],
-    "Data": ["postgresql", "mysql", "mongodb", "pandas", "spark", "airflow", "etl", "dbt"],
-    "IA": ["machine learning", "llm", "rag", "ollama", "pytorch", "tensorflow"],
-    "Cloud / DevOps": ["docker", "git", "kubernetes", "aws", "azure", "gcp", "linux"],
-    "BI / Analyse": ["power bi", "powerbi", "tableau", "excel"],
-    "Autres": [],
-  };
-
-  const grouped = Object.fromEntries(Object.keys(buckets).map((name) => [name, []]));
-
-  rawSkills.forEach((skill) => {
-    const key = skill.toLowerCase();
-    const category = Object.entries(buckets).find(([, aliases]) => (
-      aliases.some((alias) => key.includes(alias))
-    ))?.[0] || "Autres";
-    grouped[category].push(skill);
-  });
-
-  return Object.entries(grouped)
-    .filter(([, values]) => values.length)
-    .map(([name, values]) => ({ name, skills: values.join(", "), include: true }));
-}
-
-// ── Item management ───────────────────────────────────────────────────────────
 
 function addItem(groupName, data = {}) {
-  const sourceTemplate = groupName === "educationItems"
-    ? educationTemplate
-    : groupName === "skillGroups"
-      ? skillGroupTemplate
-      : template;
-  const node = sourceTemplate.content.firstElementChild.cloneNode(true);
-  const itemData = { ...data };
-
-  if (
-    groupName === "educationItems" &&
-    itemData.include === undefined &&
-    /certification/i.test(itemData.title || "")
-  ) {
-    itemData.include = false;
-  }
-
-  Object.entries(itemData).forEach(([key, value]) => {
-    const field = node.querySelector(`[data-field="${key}"]`);
-    if (!field) return;
-    if (field.type === "checkbox") {
-      field.checked = value !== false;
-      return;
-    }
-    field.value = value;
+  const node = templates[groupName].content.firstElementChild.cloneNode(true);
+  node.querySelectorAll("[data-field]").forEach((field) => {
+    const value = data[field.dataset.field];
+    if (field.type === "checkbox") field.checked = value !== false; else field.value = value || "";
   });
-  refreshItemHeader(node, groupName);
-
-  node.querySelector("[data-toggle-item]").addEventListener("click", () => {
+  node.querySelector("[data-toggle-item]").addEventListener("click", (event) => {
+    if (event.target.closest("[data-move-up],[data-move-down]")) return;
     node.classList.toggle("is-collapsed");
   });
-
-  node.querySelector("[data-move-up]").addEventListener("click", (event) => {
-    event.stopPropagation();
-    moveItem(node, "up");
-  });
-
-  node.querySelector("[data-move-down]").addEventListener("click", (event) => {
-    event.stopPropagation();
-    moveItem(node, "down");
-  });
-
-  node.querySelectorAll("[data-field]").forEach((field) => {
-    field.addEventListener("input", () => refreshItemHeader(node, groupName));
-    field.addEventListener("change", () => refreshItemHeader(node, groupName));
-  });
-
-  node.querySelector("[data-remove]").addEventListener("click", () => {
-    node.remove();
-    saveDraft("Sauvegarde automatique");
-    scheduleAutoGenerate();
-  });
-  groups[groupName].appendChild(node);
-  if (Object.keys(data).length) node.classList.add("is-collapsed");
+  node.querySelector("[data-remove]").addEventListener("click", () => { node.remove(); changed(); });
+  node.querySelector("[data-move-up]").addEventListener("click", () => { if (node.previousElementSibling) node.parentElement.insertBefore(node, node.previousElementSibling); changed(); });
+  node.querySelector("[data-move-down]").addEventListener("click", () => { if (node.nextElementSibling) node.parentElement.insertBefore(node.nextElementSibling, node); changed(); });
+  node.addEventListener("input", () => refreshItem(node));
+  refreshItem(node); groups[groupName].appendChild(node); return node;
 }
 
-function moveItem(node, direction) {
-  const sibling = direction === "up" ? node.previousElementSibling : node.nextElementSibling;
-  if (!sibling) return;
+function readItems(groupName) { return [...groups[groupName].children].map(itemData); }
 
-  if (direction === "up") {
-    node.parentElement.insertBefore(node, sibling);
-  } else {
-    node.parentElement.insertBefore(sibling, node);
-  }
-
-  saveDraft("Ordre mis à jour");
-  scheduleAutoGenerate();
-}
-
-function refreshItemHeader(node, groupName) {
-  const titleEl = node.querySelector("[data-item-title]");
-  const metaEl = node.querySelector("[data-item-meta]");
-  const getValue = (fieldName) => node.querySelector(`[data-field="${fieldName}"]`)?.value?.trim() || "";
-
-  if (groupName === "skillGroups") {
-    const category = getValue("name") || "Nouvelle catégorie";
-    const skills = getValue("skills").split(/[,;\n]/).map((skill) => skill.trim()).filter(Boolean);
-    titleEl.textContent = category;
-    metaEl.textContent = `${skills.length} compétence${skills.length > 1 ? "s" : ""}`;
-    return;
-  }
-
-  const title = getValue("title") || (groupName === "educationItems" ? "Nouvelle formation" : "Nouvelle expérience");
-  const organization = getValue("organization");
-  const period = getValue("period");
-  titleEl.textContent = title;
-  metaEl.textContent = [organization, period].filter(Boolean).join(" · ");
-}
-
-function readItems(groupName) {
-  return [...groups[groupName].querySelectorAll(".item-editor")].map((node) => {
-    const item = {};
-    node.querySelectorAll("[data-field]").forEach((field) => {
-      item[field.dataset.field] = field.type === "checkbox"
-        ? field.checked
-        : field.value.trim();
-    });
-    return item;
-  });
-}
-
-function readProfile() {
+function readPayload() {
   const data = new FormData(form);
-  return {
-    name: data.get("name") || "",
-    target_title: data.get("target_title") || "",
-    location: data.get("location") || "",
-    email: data.get("email") || "",
-    phone: data.get("phone") || "",
-    links: data.get("links") || "",
-    summary: data.get("summary") || "",
-    skills: readItems("skillGroups").map((group) => group.skills).join(", "),
-    skill_groups: readItems("skillGroups"),
-    languages: data.get("languages") || "",
-    experiences: readItems("experiences"),
-    education_items: readItems("educationItems"),
-  };
+  return { profile: { name: data.get("name") || "", target_title: data.get("target_title") || "", location: data.get("location") || "", email: data.get("email") || "", phone: data.get("phone") || "", links: data.get("links") || "", summary: data.get("summary") || "", skill_groups: readItems("skillGroups"), experiences: readItems("experiences"), education_items: readItems("educationItems"), languages: data.get("languages") || "", skills: "", education: "" }, job_offer: data.get("job_offer") || "", profile_mode: "auto", use_ollama: false, cv_font: $("#cvFont").value, cv_theme: $("#cvTheme").value };
 }
 
-function readDraft() {
-  const data = new FormData(form);
-  return {
-    profile: readProfile(),
-    job_offer: data.get("job_offer") || "",
-    profile_mode: data.get("profile_mode") || "auto",
-    cv_font: cvFont.value,
-    cv_theme: cvTheme.value,
-    use_ollama: data.get("use_ollama") === "on",
-  };
+function applyPayload(payload) {
+  const profile = payload?.profile || {};
+  ["name", "target_title", "location", "email", "phone", "links", "summary", "languages"].forEach((name) => { form.elements[name].value = profile[name] || ""; });
+  form.elements.job_offer.value = payload?.job_offer || "";
+  $("#cvFont").value = payload?.cv_font || "Arial, Helvetica, sans-serif";
+  $("#cvTheme").value = payload?.cv_theme || "theme-slate";
+  Object.values(groups).forEach((group) => { group.innerHTML = ""; });
+  (profile.skill_groups || []).forEach((item) => addItem("skillGroups", item));
+  (profile.experiences || []).forEach((item) => addItem("experiences", item));
+  (profile.education_items || []).forEach((item) => addItem("educationItems", item));
+  if (!groups.skillGroups.children.length) addItem("skillGroups", { name: "Compétences clés", include: true });
+  if (!groups.experiences.children.length) addItem("experiences");
+  if (!groups.educationItems.children.length) addItem("educationItems");
+  applyDesign();
 }
 
-// ── Save & restore ────────────────────────────────────────────────────────────
-
-function saveDraft(message = "Brouillon sauvegardé") {
-  const draft = readDraft();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
-  scheduleDatabaseSave(draft);
-  statusEl.textContent = message;
+function applyDesign() {
+  preview.style.setProperty("--cv-font", $("#cvFont").value);
+  preview.querySelectorAll(".cv-page").forEach((page) => { page.className = `cv-page ${$("#cvTheme").value}`; });
 }
 
-function showToast(message) {
-  if (!toast) return;
-
-  toast.textContent = message;
-  toast.classList.add("is-visible");
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => {
-    toast.classList.remove("is-visible");
-  }, 2400);
-}
-
-function scheduleDatabaseSave(draft) {
-  pendingDatabaseDraft = draft;
-  clearTimeout(databaseSaveTimer);
-  databaseSaveTimer = setTimeout(() => {
-    saveDraftToDatabase(draft);
-  }, DATABASE_SAVE_DELAY);
-}
-
-async function saveDraftToDatabase(draft) {
+async function generateNow() {
+  const id = ++generation;
+  $("#status").textContent = "Mise à jour…";
   try {
-    await fetch(`/api/draft/${DRAFT_ID}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payload: draft }),
-    });
-    if (currentCvDraftId) {
-      await saveCurrentCvDraft(draft);
-    } else if (currentProfileId) {
-      await saveCurrentProfile(draft);
-    }
-    if (pendingDatabaseDraft === draft) pendingDatabaseDraft = null;
-  } catch (error) {
-    statusEl.textContent = `Sauvegarde SQLite indisponible: ${error.message}`;
-  }
+    const result = await api("/api/generate", { method: "POST", body: JSON.stringify(readPayload()) });
+    if (id !== generation) return;
+    preview.innerHTML = result.html; applyDesign(); $("#status").textContent = "Aperçu à jour";
+  } catch (error) { $("#status").textContent = error.message; }
 }
 
-function flushDatabaseSave() {
-  if (!pendingDatabaseDraft) return;
-
-  fetch(`/api/draft/${DRAFT_ID}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ payload: pendingDatabaseDraft }),
-    keepalive: true,
-  }).catch(() => {});
-
-  if (currentCvDraftId) {
-    const draft = pendingDatabaseDraft;
-    fetch(`/api/cv-drafts/${currentCvDraftId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildCvDraftPayload(draft)),
-      keepalive: true,
-    }).catch(() => {});
-  } else if (currentProfileId) {
-    const draft = pendingDatabaseDraft;
-    const mode = draft.profile_mode || "hybrid";
-    const name = currentProfileLabel || draft.profile.target_title || `Profil ${modeLabels[mode] || mode}`;
-
-    fetch(`/api/profiles/${currentProfileId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, mode, payload: draft }),
-      keepalive: true,
-    }).catch(() => {});
-  }
+function changed() {
+  $("#saveState").textContent = "Modifications non enregistrées";
+  clearTimeout(generateTimer); generateTimer = setTimeout(generateNow, 450);
+  clearTimeout(saveTimer); if (currentResumeId) saveTimer = setTimeout(() => saveResume(true), 1200);
 }
 
-function buildCvDraftPayload(draft = readDraft()) {
-  return {
-    title: currentCvDraftTitle || draft.profile.target_title || "Brouillon CV",
-    company: currentCvDraftCompany || "",
-    selected_profile_id: currentSelectedProfileId || "",
-    job_offer: currentApplicationOffer || draft.job_offer || "",
-    payload: draft,
-    generated_html: preview.innerHTML,
-    match_score: currentMatchScore || 0,
-  };
+function resumeBody() { return { title: $("#resumeTitle").value.trim() || "CV sans titre", status: currentStatus, template_id: currentTemplateId, payload: readPayload(), generated_html: preview.innerHTML }; }
+
+async function saveResume(silent = false) {
+  const body = resumeBody();
+  const data = currentResumeId
+    ? await api(`/api/resumes/${currentResumeId}`, { method: "PUT", body: JSON.stringify(body) })
+    : await api("/api/resumes", { method: "POST", body: JSON.stringify(body) });
+  currentResumeId = data.resume.id; $("#saveState").textContent = `Enregistré à ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#activeResumeName").textContent = body.title; if (!silent) toast("CV enregistré");
 }
 
-async function saveCurrentCvDraft(draft = readDraft()) {
-  if (!currentCvDraftId) return;
+function showEditor() { $("#homeView").classList.add("is-hidden"); $("#editorView").classList.remove("is-hidden"); document.body.classList.add("editor-open"); }
+function showHome() { $("#editorView").classList.add("is-hidden"); $("#homeView").classList.remove("is-hidden"); document.body.classList.remove("editor-open"); loadDashboard(); }
 
-  await fetch(`/api/cv-drafts/${currentCvDraftId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(buildCvDraftPayload(draft)),
-  });
+async function newResumeFrom(payload = null, templateId = "") {
+  currentResumeId = null; currentStatus = "draft"; currentTemplateId = templateId; $("#resumeTitle").value = "Nouveau CV"; $("#activeResumeName").textContent = "Nouveau CV"; $("#saveState").textContent = "Brouillon non enregistré"; updateStatusButton();
+  applyPayload(payload || blankPayload()); showEditor(); await generateNow();
 }
 
-async function saveCurrentProfile(draft = readDraft()) {
-  if (!currentProfileId) return;
-
-  const mode = draft.profile_mode || "hybrid";
-  const name = currentProfileLabel || draft.profile.target_title || `Profil ${modeLabels[mode] || mode}`;
-  await fetch(`/api/profiles/${currentProfileId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, mode, payload: draft }),
-  });
+async function openResume(id) {
+  const data = await api(`/api/resumes/${id}`); const resume = data.resume; if (!resume) return;
+  currentResumeId = resume.id; currentStatus = resume.status; currentTemplateId = resume.template_id || "";
+  $("#resumeTitle").value = resume.title; $("#activeResumeName").textContent = resume.title; $("#saveState").textContent = `Enregistré le ${formatDate(resume.updated_at)}`; updateStatusButton(); applyPayload(resume.payload); showEditor();
+  preview.innerHTML = resume.generated_html || preview.innerHTML; applyDesign(); if (!resume.generated_html) await generateNow();
 }
 
-function fillField(name, value) {
-  const field = form.elements[name];
-  if (!field) return;
+function updateStatusButton() { $("#toggleStatus").textContent = currentStatus === "final" ? "Repasser en brouillon" : "Finaliser"; $("#toggleStatus").classList.toggle("is-final", currentStatus === "final"); }
 
-  if (field instanceof RadioNodeList) {
-    field.value = value || "auto";
-    return;
-  }
-
-  if (field.type === "checkbox") {
-    field.checked = Boolean(value);
-    return;
-  }
-
-  field.value = value || "";
+async function loadDashboard() {
+  const [resumeData, templateData] = await Promise.all([api("/api/resumes"), api("/api/templates")]);
+  resumes = resumeData.resumes || []; const personalTemplates = templateData.templates || [];
+  $("#resumeCount").textContent = resumes.length; $("#draftCount").textContent = resumes.filter((r) => r.status === "draft").length; $("#templateCount").textContent = personalTemplates.length;
+  renderResumes(); renderTemplates(personalTemplates);
 }
 
-function applyDraft(draft) {
-  try {
-    const profile = draft.profile || {};
-
-    [
-      "name",
-      "target_title",
-      "location",
-      "email",
-      "phone",
-      "links",
-      "summary",
-      "languages",
-    ].forEach((name) => fillField(name, profile[name]));
-
-    fillField("job_offer", draft.job_offer);
-    fillField("profile_mode", draft.profile_mode);
-    fillField("use_ollama", draft.use_ollama);
-    cvFont.value = draft.cv_font || cvFont.value;
-    cvTheme.value = draft.cv_theme || cvTheme.value;
-    applyCvFont();
-    applyCvTheme();
-
-    groups.skillGroups.innerHTML = "";
-    groups.experiences.innerHTML = "";
-    groups.educationItems.innerHTML = "";
-    (profile.skill_groups || []).forEach((item) => addItem("skillGroups", item));
-    (profile.experiences || []).forEach((item) => addItem("experiences", item));
-    (profile.education_items || []).forEach((item) => addItem("educationItems", item));
-
-    if (!groups.skillGroups.children.length && profile.skills) {
-      migrateLegacySkills(profile.skills).forEach((item) => addItem("skillGroups", item));
-    }
-
-    if (!groups.educationItems.children.length && profile.education) {
-      profile.education.split("\n").filter(Boolean).forEach((line) => {
-        addItem("educationItems", { title: line.trim() });
-      });
-    }
-
-    if (!groups.skillGroups.children.length) defaultSkillGroups(draft.profile_mode).forEach((item) => addItem("skillGroups", item));
-    if (!groups.experiences.children.length) addItem("experiences");
-    if (!groups.educationItems.children.length) addItem("educationItems");
-    statusEl.textContent = "Brouillon restauré";
-    return true;
-  } catch (error) {
-    statusEl.textContent = `Brouillon illisible: ${error.message}`;
-    return false;
-  }
+function renderResumes() {
+  const filter = $("#resumeFilter").value; const list = resumes.filter((r) => filter === "all" || r.status === filter);
+  $("#resumeGrid").innerHTML = list.length ? list.map((r) => `<article class="profile-card resume-card"><div><span class="status-pill ${r.status}">${r.status === "final" ? "Finalisé" : "Brouillon"}</span><h3>${escapeHtml(r.title)}</h3><p>Modifié le ${formatDate(r.updated_at)}</p></div><div class="profile-card-actions"><button data-open-resume="${r.id}">Ouvrir</button><button data-duplicate-resume="${r.id}">Dupliquer</button><button class="danger" data-delete-resume="${r.id}">Supprimer</button></div></article>`).join("") : `<article class="empty-library"><h3>Aucun CV ici</h3><p>Créez votre premier CV pour le retrouver automatiquement dans cet espace.</p></article>`;
 }
 
-function restoreDraft() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return false;
-
-  try {
-    return applyDraft(JSON.parse(raw));
-  } catch (error) {
-    statusEl.textContent = `Brouillon local illisible: ${error.message}`;
-    return false;
-  }
+function renderTemplates(list) {
+  const starter = [{ id: "starter-modern", name: "Essentiel moderne", description: "Une mise en page ATS claire et professionnelle.", theme: "theme-navy" }, { id: "starter-classic", name: "Classique élégant", description: "Un style intemporel pour tous les secteurs.", theme: "theme-burgundy" }];
+  $("#templateGrid").innerHTML = [...starter, ...list].map((t) => `<article class="profile-card template-card"><div><span class="template-swatch ${t.theme || "theme-teal"}"></span><h3>${escapeHtml(t.name)}</h3><p>${escapeHtml(t.description || "Modèle personnel")}</p></div><div class="profile-card-actions"><button class="primary" data-use-template="${t.id}">Utiliser</button>${t.theme ? "" : `<button class="danger" data-delete-template="${t.id}">Supprimer</button>`}</div></article>`).join("");
 }
 
-async function restoreDatabaseDraft() {
-  try {
-    const response = await fetch(`/api/draft/${DRAFT_ID}`);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    const data = await response.json();
-    if (!data.payload) return false;
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data.payload));
-    return applyDraft(data.payload);
-  } catch (error) {
-    statusEl.textContent = `Lecture SQLite indisponible: ${error.message}`;
-    return false;
-  }
+async function useTemplate(id) {
+  if (id.startsWith("starter-")) { const payload = blankPayload(); payload.cv_theme = id === "starter-modern" ? "theme-navy" : "theme-burgundy"; return newResumeFrom(payload, id); }
+  const data = await api(`/api/templates/${id}`); return newResumeFrom(data.template.payload, id);
 }
 
-// ── Profiles ──────────────────────────────────────────────────────────────────
-
-async function loadProfiles() {
-  try {
-    const response = await fetch("/api/profiles");
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    const data = await response.json();
-    renderProfiles(data.profiles || []);
-  } catch (error) {
-    profileGrid.innerHTML = `<article class="profile-card"><p>Impossible de charger les profils : ${error.message}</p></article>`;
-  }
+async function loadAccount() {
+  const data = await api("/api/account"); account = data.account?.payload || null;
+  if (!account) $("#accountOverlay").classList.remove("is-hidden");
 }
 
-async function loadCvDrafts() {
-  try {
-    const response = await fetch("/api/cv-drafts");
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    const data = await response.json();
-    renderCvDrafts(data.drafts || []);
-  } catch (error) {
-    cvDraftGrid.innerHTML = `<article class="profile-card"><p>Impossible de charger les brouillons : ${error.message}</p></article>`;
-  }
-}
-
-function renderProfiles(profiles) {
-  profileCount.textContent = `${profiles.length} profil${profiles.length > 1 ? "s" : ""}`;
-
-  if (!profiles.length) {
-    profileGrid.innerHTML = `
-      <article class="profile-card">
-        <h3>Aucun profil pour l'instant</h3>
-        <p>Crée un profil Data, IA, Dev ou Hybride pour commencer.</p>
-      </article>
-    `;
-    return;
-  }
-
-  profileGrid.innerHTML = profiles.map((profile) => {
-    const modeCls = `mode-${escapeHtml(profile.mode || "auto")}`;
-    const modeLabel = modeLabels[profile.mode] || profile.mode;
-    return `
-      <article class="profile-card">
-        <div>
-          <h3>${escapeHtml(profile.name)}</h3>
-          <p>
-            <span class="mode-badge ${modeCls}">${escapeHtml(modeLabel)}</span>
-            &nbsp;· ${formatDate(profile.updated_at)}
-          </p>
-        </div>
-        <div class="profile-card-actions">
-          <button type="button" data-open-profile="${profile.id}">Ouvrir</button>
-          <button class="danger" type="button" data-delete-profile="${profile.id}">Supprimer</button>
-        </div>
-      </article>
-    `;
-  }).join("");
-}
-
-function renderCvDrafts(drafts) {
-  cvDraftCount.textContent = `${drafts.length} brouillon${drafts.length > 1 ? "s" : ""}`;
-
-  if (!drafts.length) {
-    cvDraftGrid.innerHTML = `
-      <article class="profile-card">
-        <h3>Aucun brouillon CV</h3>
-        <p>Colle une offre dans Nouvelle candidature pour créer un draft ciblé.</p>
-      </article>
-    `;
-    return;
-  }
-
-  cvDraftGrid.innerHTML = drafts.map((draft) => {
-    const score = draft.match_score || 0;
-    const scoreCls = score >= 70 ? "score-high" : score >= 40 ? "score-mid" : "score-low";
-    return `
-      <article class="profile-card">
-        <div>
-          <h3>${escapeHtml(draft.title)}</h3>
-          <p>
-            ${escapeHtml(draft.company || "Sans entreprise")}
-            &nbsp;·&nbsp;<span class="score-badge ${scoreCls}">Match ${score}%</span>
-            &nbsp;· ${formatDate(draft.updated_at)}
-          </p>
-        </div>
-        <div class="profile-card-actions">
-          <button type="button" data-open-cv-draft="${draft.id}">Ouvrir</button>
-          <button class="danger" type="button" data-delete-cv-draft="${draft.id}">Supprimer</button>
-        </div>
-      </article>
-    `;
-  }).join("");
-}
-
-function escapeHtml(value) {
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
-
-function formatDate(value) {
-  if (!value) return "jamais modifié";
-  return new Date(value).toLocaleDateString("fr-FR");
-}
-
-// ── Profile actions ───────────────────────────────────────────────────────────
-
-async function createProfile(mode = "hybrid", suggestedName = "") {
-  const defaultName = suggestedName || `Profil ${modeLabels[mode] || "Hybride"}`;
-  const name = await showPrompt("Nom du profil", defaultName, defaultName);
-  if (!name) return;
-
-  try {
-    const draft = makeBlankDraft(mode, name);
-    const response = await fetch("/api/profiles", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, mode, payload: draft }),
-    });
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const profile = await response.json();
-    await openProfile(profile.id);
-  } catch (error) {
-    showToast(`Erreur : ${error.message}`);
-  }
-}
-
-async function openProfile(profileId) {
-  const response = await fetch(`/api/profiles/${profileId}`);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-  const data = await response.json();
-  if (!data.profile) throw new Error("Profil introuvable");
-
-  currentProfileId = data.profile.id;
-  currentProfileLabel = data.profile.name;
-  currentCvDraftId = null;
-  currentCvDraftTitle = "";
-  currentCvDraftCompany = "";
-  currentSelectedProfileId = "";
-  currentApplicationOffer = "";
-  currentMatchScore = 0;
-  updateScoreBadge(null);
-  activeProfileName.textContent = data.profile.name;
-  if (!applyDraft(data.profile.payload)) return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data.profile.payload));
-  showEditor();
-  scheduleAutoGenerate();
-}
-
-async function analyzeApplicationOffer() {
-  const jobOffer = applicationOffer.value.trim();
-  if (!jobOffer) {
-    applicationStatus.textContent = "Colle une offre avant de créer un brouillon.";
-    return;
-  }
-
-  const btn = document.querySelector("#analyzeOffer");
-  setLoading(btn, true);
-  applicationStatus.textContent = "Analyse des profils en cours...";
-
-  try {
-    const response = await fetch("/api/cv-drafts/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: applicationTitle.value.trim(),
-        company: applicationCompany.value.trim(),
-        job_offer: jobOffer,
-      }),
-    });
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const result = await response.json();
-
-    if (result.error) {
-      applicationStatus.textContent = result.error;
-      return;
-    }
-
-    applicationStatus.textContent = `Profil choisi : ${result.selected_profile.name}`;
-    await openCvDraft(result.draft.id);
-  } catch (error) {
-    applicationStatus.textContent = `Erreur : ${error.message}`;
-  } finally {
-    setLoading(btn, false);
-  }
-}
-
-async function openCvDraft(draftId) {
-  const response = await fetch(`/api/cv-drafts/${draftId}`);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-  const data = await response.json();
-  if (!data.draft) throw new Error("Brouillon introuvable");
-
-  currentProfileId = null;
-  currentProfileLabel = "";
-  currentCvDraftId = data.draft.id;
-  currentCvDraftTitle = data.draft.title;
-  currentCvDraftCompany = data.draft.company;
-  currentSelectedProfileId = data.draft.selected_profile_id;
-  currentApplicationOffer = data.draft.job_offer;
-  currentMatchScore = data.draft.match_score;
-  updateScoreBadge(data.draft.match_score);
-  activeProfileName.textContent = data.draft.title;
-  if (!applyDraft(data.draft.payload)) return;
-  preview.innerHTML = data.draft.generated_html || preview.innerHTML;
-  applyCvFont();
-  applyCvTheme();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data.draft.payload));
-  showEditor();
-}
-
-async function deleteCvDraft(draftId) {
-  const confirmed = await showConfirm(
-    "Supprimer ce brouillon CV ?",
-    "Cette action est irréversible. Le brouillon sera définitivement supprimé."
-  );
-  if (!confirmed) return;
-
-  await fetch(`/api/cv-drafts/${draftId}`, { method: "DELETE" });
-  if (draftId === currentCvDraftId) {
-    currentCvDraftId = null;
-    currentCvDraftTitle = "";
-  }
-  await loadCvDrafts();
-  showToast("Brouillon supprimé");
-}
-
-async function deleteProfile(profileId) {
-  const confirmed = await showConfirm(
-    "Supprimer ce profil ?",
-    "Cette action est irréversible. Le profil et toutes ses données seront définitivement supprimés."
-  );
-  if (!confirmed) return;
-
-  await fetch(`/api/profiles/${profileId}`, { method: "DELETE" });
-  if (profileId === currentProfileId) {
-    currentProfileId = null;
-    currentProfileLabel = "";
-  }
-  await loadProfiles();
-  showToast("Profil supprimé");
-}
-
-function resetDraft() {
-  clearTimeout(databaseSaveTimer);
-  localStorage.removeItem(STORAGE_KEY);
-  fetch(`/api/draft/${DRAFT_ID}`, { method: "DELETE" }).catch(() => {});
-  form.reset();
-  groups.skillGroups.innerHTML = "";
-  groups.experiences.innerHTML = "";
-  groups.educationItems.innerHTML = "";
-  defaultSkillGroups("hybrid").forEach((item) => addItem("skillGroups", item));
-  addItem("experiences");
-  addItem("educationItems");
-  keywordsEl.innerHTML = "";
-  cvFont.value = "Arial, Helvetica, sans-serif";
-  cvTheme.value = "theme-slate";
-  applyCvFont();
-  applyCvTheme();
-  updateScoreBadge(null);
-  preview.innerHTML = `
-    <section class="empty-state">
-      <div class="empty-icon" aria-hidden="true">
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
-      </div>
-      <h1>Ton CV ciblé apparaîtra ici</h1>
-      <p>Remplis ta palette, colle une offre, puis génère une version adaptée.</p>
-    </section>
-  `;
-  statusEl.textContent = "Brouillon réinitialisé";
-}
-
-// ── CV font & theme ───────────────────────────────────────────────────────────
-
-function applyCvFont() {
-  preview.style.setProperty("--cv-font", cvFont.value);
-}
-
-function applyCvTheme() {
-  preview.querySelectorAll(".cv-page").forEach((page) => {
-    page.classList.remove("theme-slate", "theme-navy", "theme-teal", "theme-burgundy", "theme-graphite");
-    page.classList.add(cvTheme.value);
-  });
-}
-
-// ── Generation ────────────────────────────────────────────────────────────────
-
-function scheduleAutoGenerate() {
-  clearTimeout(autoGenerateTimer);
-
-  if (preview.contains(document.activeElement)) return;
-
-  autoGenerateTimer = setTimeout(() => {
-    generateCv(null, { automatic: true, useOllama: false });
-  }, AUTO_GENERATE_DELAY);
-}
-
-async function generateCv(event, options = {}) {
-  if (event) event.preventDefault();
-  const currentGeneration = ++generationId;
-  const payload = readDraft();
-  payload.use_ollama = options.useOllama ?? payload.use_ollama;
-  saveDraft(options.automatic ? "Mise à jour automatique..." : "Brouillon sauvegardé avant génération");
-
-  statusEl.textContent = options.automatic ? "Mise à jour du CV..." : "Génération en cours...";
-  try {
-    const response = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const result = await response.json();
-    if (currentGeneration !== generationId) return;
-
-    preview.innerHTML = result.html;
-    applyCvFont();
-    applyCvTheme();
-    currentMatchScore = result.match_score;
-    updateScoreBadge(result.match_score);
-
-    keywordsEl.innerHTML = result.keywords.map((word, index) => {
-      const isHot = index < 6;
-      return `<span class="${isHot ? "kw-hot" : ""}">${word}</span>`;
-    }).join("");
-
-    statusEl.textContent = result.used_ollama
-      ? `Généré avec Ollama`
-      : `Généré localement`;
-    if (result.note) statusEl.textContent += ` (${result.note})`;
-
-    if (currentCvDraftId) await saveCurrentCvDraft(readDraft());
-  } catch (error) {
-    if (currentGeneration !== generationId) return;
-    statusEl.textContent = `Erreur: ${error.message}`;
-  }
-}
-
-function loadSample() {
-  form.elements.name.value = "Prénom Nom";
-  form.elements.target_title.value = "Full Stack / Data / AI Engineer";
-  form.elements.location.value = "Paris, France";
-  form.elements.email.value = "prenom.nom@email.com";
-  form.elements.phone.value = "+33 6 00 00 00 00";
-  form.elements.links.value = "linkedin.com/in/profil | github.com/profil";
-  form.elements.summary.value = "Développeur full stack et ingénieur data/IA, capable de concevoir des APIs, interfaces web, pipelines de données et prototypes IA orientés métier.";
-  form.elements.languages.value = "Français courant\nAnglais professionnel";
-  form.elements.job_offer.value = "Nous recherchons un Data Engineer Python pour construire des pipelines ETL avec Airflow, SQL, Spark et Docker. Expérience API appréciée.";
-  cvFont.value = "Arial, Helvetica, sans-serif";
-  cvTheme.value = "theme-navy";
-  applyCvFont();
-  applyCvTheme();
-
-  groups.skillGroups.innerHTML = "";
-  groups.experiences.innerHTML = "";
-  groups.educationItems.innerHTML = "";
-
-  [
-    { name: "Langages", skills: "Java, Python, JavaScript, SQL", include: true },
-    { name: "Backend / APIs", skills: "FastAPI, Flask, Spring Boot, API REST", include: true },
-    { name: "Frontend", skills: "React, Angular", include: true },
-    { name: "Data / IA", skills: "Pandas, Spark, Airflow, ETL, Machine Learning, LLM, RAG", include: true },
-    { name: "Cloud / DevOps", skills: "Docker, Git", include: true },
-    { name: "BI / Analyse", skills: "Power BI", include: true },
-  ].forEach((item) => addItem("skillGroups", item));
-
-  addItem("experiences", {
-    title: "Full Stack Developer",
-    organization: "Entreprise A",
-    period: "2022 - 2024",
-    tags: "React, FastAPI, SQL, Docker",
-    description: "- Développement d'applications web avec React et APIs Python\n- Conception de schémas SQL et optimisation de requêtes\n- Industrialisation avec Docker et CI/CD",
-  });
-  addItem("experiences", {
-    title: "Data / Analytics Engineer",
-    organization: "Entreprise B",
-    period: "2020 - 2022",
-    tags: "Python, Airflow, Spark, ETL",
-    description: "- Création de pipelines ETL Python pour alimenter des tableaux de bord\n- Orchestration de traitements avec Airflow\n- Transformation de données volumineuses avec Spark",
-  });
-  addItem("educationItems", {
-    title: "Master Informatique / Data",
-    organization: "Université / École",
-    period: "2021 - 2023",
-    tags: "Data, Software Engineering",
-    description: "- Spécialisation data engineering et développement logiciel",
-    include: true,
-  });
-  addItem("educationItems", {
-    title: "Certification Cloud ou Data",
-    organization: "Organisme de formation",
-    period: "2024",
-    tags: "Cloud, Data",
-    description: "- Certification orientée plateformes data et industrialisation",
-    include: false,
-  });
-  saveDraft("Exemple chargé et sauvegardé");
-  scheduleAutoGenerate();
-}
-
-// ── Event listeners ───────────────────────────────────────────────────────────
-
-document.addEventListener("click", (event) => {
-  const addButton = event.target.closest("[data-add]");
-  if (!addButton) return;
-
-  addItem(addButton.dataset.add);
-  saveDraft("Sauvegarde automatique");
-  scheduleAutoGenerate();
-});
-
-document.querySelector("#loadSample").addEventListener("click", loadSample);
-document.querySelector("#createProfile").addEventListener("click", () => createProfile("hybrid"));
-document.querySelector("#analyzeOffer").addEventListener("click", () => {
-  analyzeApplicationOffer().catch((error) => {
-    applicationStatus.textContent = `Erreur : ${error.message}`;
-    setLoading(document.querySelector("#analyzeOffer"), false);
-  });
-});
-document.querySelector("#backHome").addEventListener("click", showHome);
-document.querySelector("#saveDraft").addEventListener("click", async () => {
-  const btn = document.querySelector("#saveDraft");
-  setLoading(btn, true);
-  try {
-    saveDraft("Profil sauvegardé");
-    if (currentProfileId) await saveCurrentProfile();
-    if (currentCvDraftId) await saveCurrentCvDraft();
-    showToast("Enregistré");
-  } finally {
-    setLoading(btn, false);
-  }
-});
-document.querySelector("#resetDraft").addEventListener("click", async () => {
-  const confirmed = await showConfirm(
-    "Réinitialiser le formulaire ?",
-    "Toutes les données saisies seront effacées. Le profil en base de données reste intact.",
-    "Réinitialiser"
-  );
-  if (confirmed) resetDraft();
-});
-document.querySelector("#printCv").addEventListener("click", () => window.print());
-cvFont.addEventListener("change", () => {
-  applyCvFont();
-  saveDraft("Police sauvegardée");
-});
-cvTheme.addEventListener("change", () => {
-  applyCvTheme();
-  saveDraft("Thème sauvegardé");
-});
-document.querySelector("#copyHtml").addEventListener("click", async () => {
-  await navigator.clipboard.writeText(preview.innerHTML);
-  statusEl.textContent = "HTML copié";
-  showToast("HTML copié dans le presse-papiers");
-});
-
-document.querySelectorAll("[data-create-mode]").forEach((button) => {
-  button.addEventListener("click", () => createProfile(button.dataset.createMode));
-});
-
-document.querySelectorAll("[data-workflow]").forEach((button) => {
-  button.addEventListener("click", () => showWorkflow(button.dataset.workflow));
-});
-
-document.querySelectorAll("[data-home-dashboard]").forEach((button) => {
-  button.addEventListener("click", showHomeDashboard);
-});
-
-profileGrid.addEventListener("click", async (event) => {
-  const openButton = event.target.closest("[data-open-profile]");
-  const deleteButton = event.target.closest("[data-delete-profile]");
-
-  if (openButton) {
-    await openProfile(openButton.dataset.openProfile).catch((err) => showToast(`Erreur : ${err.message}`));
-  }
-  if (deleteButton) {
-    await deleteProfile(deleteButton.dataset.deleteProfile).catch((err) => showToast(`Erreur : ${err.message}`));
-  }
-});
-
-cvDraftGrid.addEventListener("click", async (event) => {
-  const openButton = event.target.closest("[data-open-cv-draft]");
-  const deleteButton = event.target.closest("[data-delete-cv-draft]");
-
-  if (openButton) {
-    await openCvDraft(openButton.dataset.openCvDraft).catch((err) => showToast(`Erreur : ${err.message}`));
-  }
-  if (deleteButton) {
-    await deleteCvDraft(deleteButton.dataset.deleteCvDraft).catch((err) => showToast(`Erreur : ${err.message}`));
-  }
-});
-
-form.addEventListener("submit", (event) => generateCv(event));
-form.addEventListener("input", () => {
-  saveDraft("Sauvegarde automatique");
-  scheduleAutoGenerate();
-});
-form.addEventListener("change", () => {
-  saveDraft("Sauvegarde automatique");
-  scheduleAutoGenerate();
-});
-
-window.addEventListener("beforeunload", flushDatabaseSave);
-
-applyCvFont();
-applyCvTheme();
-
-async function initializeApp() {
-  await Promise.all([loadProfiles(), loadCvDrafts()]);
-  defaultSkillGroups("hybrid").forEach((item) => addItem("skillGroups", item));
-  addItem("experiences");
-  addItem("educationItems");
-}
-
-initializeApp();
+function openAccount() { const a = account || {}; [...$("#accountForm").elements].forEach((field) => { if (field.name) field.value = a[field.name] || ""; }); $("#accountOverlay").classList.remove("is-hidden"); }
+
+form.addEventListener("input", changed); form.addEventListener("change", changed); $("#resumeTitle").addEventListener("input", changed);
+document.addEventListener("click", (event) => { const add = event.target.closest("[data-add]"); if (add) { addItem(add.dataset.add); changed(); } });
+$("#newResume").addEventListener("click", () => newResumeFrom()); $("#backHome").addEventListener("click", showHome); $("#saveResume").addEventListener("click", () => saveResume());
+$("#browseTemplates").addEventListener("click", () => $("#templateSection").scrollIntoView({ behavior: "smooth" })); $("#resumeFilter").addEventListener("change", renderResumes);
+$("#cvFont").addEventListener("change", () => { applyDesign(); changed(); }); $("#cvTheme").addEventListener("change", () => { applyDesign(); changed(); });
+$("#toggleStatus").addEventListener("click", async () => { currentStatus = currentStatus === "final" ? "draft" : "final"; updateStatusButton(); await saveResume(); toast(currentStatus === "final" ? "CV finalisé" : "CV repassé en brouillon"); });
+$("#printCv").addEventListener("click", () => window.print());
+$("#exportHtml").addEventListener("click", async () => { const css = await fetch("/static/styles.css").then((r) => r.text()); const blob = new Blob([`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml($("#resumeTitle").value || "CV")}</title><style>${css}\nbody{overflow:auto;background:#eef2f7}.cv-page{margin:24px auto}</style></head><body>${preview.innerHTML}</body></html>`], { type: "text/html" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${($("#resumeTitle").value || "cv").replace(/[^a-z0-9]+/gi, "-")}.html`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); });
+$("#saveTemplate").addEventListener("click", async () => { const name = prompt("Nom du modèle", `${$("#resumeTitle").value || "Mon CV"} — modèle`); if (!name) return; await api("/api/templates", { method: "POST", body: JSON.stringify({ name, description: "Modèle créé depuis un CV personnel", payload: readPayload(), generated_html: preview.innerHTML }) }); toast("Modèle enregistré"); });
+$("#deleteResume").addEventListener("click", async () => { if (!currentResumeId || !confirm("Supprimer définitivement ce CV ?")) return; await api(`/api/resumes/${currentResumeId}`, { method: "DELETE" }); toast("CV supprimé"); showHome(); });
+$("#resumeGrid").addEventListener("click", async (event) => { const open = event.target.closest("[data-open-resume]"); const duplicate = event.target.closest("[data-duplicate-resume]"); const remove = event.target.closest("[data-delete-resume]"); if (open) openResume(open.dataset.openResume); if (duplicate) { const data = await api(`/api/resumes/${duplicate.dataset.duplicateResume}`); await newResumeFrom(data.resume.payload, data.resume.template_id); $("#resumeTitle").value = `${data.resume.title} — copie`; } if (remove && confirm("Supprimer définitivement ce CV ?")) { await api(`/api/resumes/${remove.dataset.deleteResume}`, { method: "DELETE" }); loadDashboard(); } });
+$("#templateGrid").addEventListener("click", async (event) => { const use = event.target.closest("[data-use-template]"); const remove = event.target.closest("[data-delete-template]"); if (use) useTemplate(use.dataset.useTemplate); if (remove && confirm("Supprimer ce modèle ?")) { await api(`/api/templates/${remove.dataset.deleteTemplate}`, { method: "DELETE" }); loadDashboard(); } });
+$("#accountButton").addEventListener("click", openAccount); $("#closeAccount").addEventListener("click", () => { if (account) $("#accountOverlay").classList.add("is-hidden"); });
+$("#accountForm").addEventListener("submit", async (event) => { event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget)); const data = await api("/api/account", { method: "PUT", body: JSON.stringify(values) }); account = data.account.payload; $("#accountOverlay").classList.add("is-hidden"); toast("Compte enregistré"); });
+document.addEventListener("keydown", (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s" && !$("#editorView").classList.contains("is-hidden")) { event.preventDefault(); saveResume(); } });
+
+async function init() { await loadAccount(); await loadDashboard(); }
+init().catch((error) => toast(error.message));
