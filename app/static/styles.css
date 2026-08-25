@@ -890,10 +890,24 @@ textarea:focus {
     print-color-adjust: exact;
   }
 
-  .cv-item,
   .skill-group {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .cv-item {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .cv-item .item-head {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .cv-item li {
+    orphans: 2;
+    widows: 2;
   }
 }
 
