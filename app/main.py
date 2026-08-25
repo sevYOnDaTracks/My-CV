@@ -219,6 +219,18 @@ def init_database() -> None:
         connection.execute(
             "INSERT OR IGNORE INTO app_meta (key, value) VALUES ('legacy_cv_migrated', '1')"
         )
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO resumes
+                (id, title, status, template_id, payload, generated_html, created_at, updated_at)
+            SELECT 'legacy-draft-' || id, 'Brouillon récupéré', 'draft', '', payload, '', updated_at, updated_at
+            FROM drafts
+            WHERE NOT EXISTS (SELECT 1 FROM app_meta WHERE key = 'legacy_draft_migrated')
+            """
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO app_meta (key, value) VALUES ('legacy_draft_migrated', '1')"
+        )
 
 
 def save_draft_payload(draft_id: str, payload: dict) -> None:

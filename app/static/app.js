@@ -19,6 +19,7 @@ function toast(message) {
 
 async function api(url, options = {}) {
   const response = await fetch(url, { headers: { "Content-Type": "application/json", ...(options.headers || {}) }, ...options });
+  if (response.status === 404 && url.startsWith("/api/")) throw new Error("Le serveur utilise une ancienne version. Redémarrez l’application puis actualisez la page.");
   if (!response.ok) throw new Error(`Erreur ${response.status}`);
   return response.json();
 }
@@ -181,6 +182,7 @@ $("#accountButton").addEventListener("click", openAccount); $("#closeAccount").a
 $("#accountOverlay").addEventListener("click", (event) => { if (event.target === $("#accountOverlay")) closeAccountModal(); });
 $("#accountForm").addEventListener("submit", async (event) => { event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget)); const data = await api("/api/account", { method: "PUT", body: JSON.stringify(values) }); account = data.account.payload; $("#accountOverlay").classList.add("is-hidden"); toast("Compte enregistré"); });
 document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("#accountOverlay").classList.contains("is-hidden")) closeAccountModal(); if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s" && !$("#editorView").classList.contains("is-hidden")) { event.preventDefault(); saveResume(); } });
+window.addEventListener("unhandledrejection", (event) => { event.preventDefault(); toast(event.reason?.message || "Une erreur empêche l’enregistrement."); });
 
 async function init() { await loadAccount(); await loadDashboard(); }
 init().catch((error) => toast(error.message));
