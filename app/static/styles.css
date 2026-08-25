@@ -896,16 +896,25 @@ textarea:focus {
   }
 
   .cv-item {
+    display: contents;
     break-inside: auto;
     page-break-inside: auto;
   }
 
   .cv-item .item-head {
+    margin-top: 16px;
     break-after: avoid;
     page-break-after: avoid;
   }
 
+  .cv-item ul {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
   .cv-item li {
+    break-inside: avoid;
+    page-break-inside: avoid;
     orphans: 2;
     widows: 2;
   }
