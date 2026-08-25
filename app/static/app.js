@@ -196,14 +196,24 @@ $("#saveResume").addEventListener("click", (event) => withLoading(event.currentT
 $("#browseTemplates").addEventListener("click", () => $("#templateSection").scrollIntoView({ behavior: "smooth" })); $("#resumeFilter").addEventListener("change", renderResumes);
 $("#cvFont").addEventListener("change", () => { applyDesign(); changed(); }); $("#cvTheme").addEventListener("change", () => { applyDesign(); changed(); });
 $("#toggleStatus").addEventListener("click", (event) => withLoading(event.currentTarget, async () => { currentStatus = currentStatus === "final" ? "draft" : "final"; updateStatusButton(); await saveResume(); toast(currentStatus === "final" ? "CV finalisé" : "CV repassé en brouillon"); }));
-$("#printCv").addEventListener("click", () => {
-  const originalTitle = document.title;
-  document.title = " ";
-  const restoreTitle = () => { document.title = originalTitle; };
-  window.addEventListener("afterprint", restoreTitle, { once: true });
-  window.print();
-  setTimeout(restoreTitle, 1500);
-});
+$("#printCv").addEventListener("click", (event) => withLoading(event.currentTarget, async () => {
+  const title = $("#resumeTitle").value.trim() || "CV";
+  const response = await fetch("/api/export/pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, payload: readPayload() }),
+  });
+  if (!response.ok) throw new Error(`Export PDF impossible (${response.status})`);
+  const blob = await response.blob();
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${title.replace(/[^a-z0-9]+/gi, "-") || "cv"}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  toast("PDF téléchargé");
+}));
 $("#exportHtml").addEventListener("click", (event) => withLoading(event.currentTarget, async () => { const css = await fetch("/static/styles.css").then((r) => r.text()); const blob = new Blob([`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml($("#resumeTitle").value || "CV")}</title><style>${css}\nbody{overflow:auto;background:#eef2f7}.cv-page{margin:24px auto}</style></head><body>${preview.innerHTML}</body></html>`], { type: "text/html" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${($("#resumeTitle").value || "cv").replace(/[^a-z0-9]+/gi, "-")}.html`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); }));
 $("#saveTemplate").addEventListener("click", (event) => withLoading(event.currentTarget, async () => { const name = prompt("Nom du modèle", `${$("#resumeTitle").value || "Mon CV"} — modèle`); if (!name) return; await api("/api/templates", { method: "POST", body: JSON.stringify({ name, description: "Modèle créé depuis un CV personnel", payload: readPayload(), generated_html: preview.innerHTML }) }); toast("Modèle enregistré"); }));
 $("#deleteResume").addEventListener("click", (event) => withLoading(event.currentTarget, async () => { if (!currentResumeId || !confirm("Supprimer définitivement ce CV ?")) return; await api(`/api/resumes/${currentResumeId}`, { method: "DELETE" }); toast("CV supprimé"); showHome(); }));
