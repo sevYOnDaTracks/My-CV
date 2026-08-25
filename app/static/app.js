@@ -31,7 +31,7 @@ function formatDate(value) { return new Date(value).toLocaleDateString("fr-FR", 
 
 function blankPayload() {
   const fullName = account ? `${account.first_name || ""} ${account.last_name || ""}`.trim() : "";
-  return { profile: { name: fullName, target_title: "", location: account?.location || account?.address || "", email: account?.email || "", phone: account?.phone || "", links: account?.links || "", summary: "", skill_groups: [], experiences: [], education_items: [], languages: "" }, job_offer: "", profile_mode: "auto", use_ollama: false, cv_font: "Arial, Helvetica, sans-serif", cv_theme: "theme-slate" };
+  return { profile: { name: fullName, target_title: "", location: account?.location || account?.address || "", email: account?.email || "", phone: account?.phone || "", links: account?.links || "", summary: "", summary_alignment: "left", skill_groups: [], experiences: [], education_items: [], languages: "" }, job_offer: "", profile_mode: "auto", use_ollama: false, cv_font: "Arial, Helvetica, sans-serif", cv_theme: "theme-slate" };
 }
 
 function itemData(node) {
@@ -66,12 +66,13 @@ function readItems(groupName) { return [...groups[groupName].children].map(itemD
 
 function readPayload() {
   const data = new FormData(form);
-  return { profile: { name: data.get("name") || "", target_title: data.get("target_title") || "", location: data.get("location") || "", email: data.get("email") || "", phone: data.get("phone") || "", links: data.get("links") || "", summary: data.get("summary") || "", skill_groups: readItems("skillGroups"), experiences: readItems("experiences"), education_items: readItems("educationItems"), languages: data.get("languages") || "", skills: "", education: "" }, job_offer: data.get("job_offer") || "", profile_mode: "auto", use_ollama: false, cv_font: $("#cvFont").value, cv_theme: $("#cvTheme").value };
+  return { profile: { name: data.get("name") || "", target_title: data.get("target_title") || "", location: data.get("location") || "", email: data.get("email") || "", phone: data.get("phone") || "", links: data.get("links") || "", summary: data.get("summary") || "", summary_alignment: data.get("summary_alignment") || "left", skill_groups: readItems("skillGroups"), experiences: readItems("experiences"), education_items: readItems("educationItems"), languages: data.get("languages") || "", skills: "", education: "" }, job_offer: data.get("job_offer") || "", profile_mode: "auto", use_ollama: false, cv_font: $("#cvFont").value, cv_theme: $("#cvTheme").value };
 }
 
 function applyPayload(payload) {
   const profile = payload?.profile || {};
   ["name", "target_title", "location", "email", "phone", "links", "summary", "languages"].forEach((name) => { form.elements[name].value = profile[name] || ""; });
+  form.elements.summary_alignment.value = profile.summary_alignment || "left";
   form.elements.job_offer.value = payload?.job_offer || "";
   $("#cvFont").value = payload?.cv_font || "Arial, Helvetica, sans-serif";
   $("#cvTheme").value = payload?.cv_theme || "theme-slate";

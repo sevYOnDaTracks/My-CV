@@ -1175,6 +1175,13 @@ textarea:focus {
 .editor-meta { display:grid; gap:5px; padding:16px 22px; border-bottom:1px solid var(--line); background:#f8fafc; }
 .editor-meta label { font-size:12px; }.editor-meta input { margin-top:5px; font-size:16px; font-weight:800; }
 .form-section { display:grid; gap:12px; }
+.summary-field { display:grid; gap:7px; }
+.field-label-row { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--ink); font-size:13px; font-weight:800; }
+.inline-control { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:11px; font-weight:700; }
+.inline-control select { width:auto; min-width:105px; padding:6px 28px 6px 9px; font-size:12px; }
+.cv-summary.align-left { text-align:left; }
+.cv-summary.align-justify { text-align:justify; text-justify:inter-word; }
+.cv-summary.align-center { text-align:center; }
 .optional-targeting { border:1px solid var(--line); border-radius:12px; padding:14px; }
 .optional-targeting summary { cursor:pointer; font-weight:800; }.optional-targeting label { margin-top:14px; }
 .account-box { display:grid; gap:16px; width:min(620px,calc(100vw - 36px)); }

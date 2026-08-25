@@ -53,6 +53,7 @@ class Profile(BaseModel):
     phone: str = ""
     links: str = ""
     summary: str = ""
+    summary_alignment: str = "left"
     skills: str = ""
     skill_groups: list[SkillGroup] = Field(default_factory=list)
     languages: str = ""
@@ -857,6 +858,7 @@ def build_cv_html(profile: Profile, job_offer: str, keywords: list[str], profile
     summary = profile.summary.strip()
     if not summary:
         summary = "Ajoutez une présentation professionnelle concise et orientée résultats."
+    summary_alignment = profile.summary_alignment if profile.summary_alignment in {"left", "justify", "center"} else "left"
 
     contacts = " | ".join(
         part for part in [profile.location, profile.email, profile.phone, profile.links] if part
@@ -904,7 +906,7 @@ def build_cv_html(profile: Profile, job_offer: str, keywords: list[str], profile
 
   <section>
     <h2>Profil</h2>
-    <p>{escape(summary)}</p>
+    <p class="cv-summary align-{summary_alignment}">{escape(summary)}</p>
   </section>
 
   <section>
